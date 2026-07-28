@@ -1,0 +1,14 @@
+{
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "car-parts-marketplace-cd640",
+          "configurations": {
+            "web": "1:781635678491:web:c753a68231db1191c863be"
+          }
+        }
+      }
+    }
+  }
+}
