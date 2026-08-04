@@ -8,13 +8,14 @@ extension ProfitPeriodX on ProfitPeriod {
       case ProfitPeriod.week:
         return 'أسبوع';
       case ProfitPeriod.month:
-        return 'شهر';
+        return '٣٠ يوم';
       case ProfitPeriod.year:
         return 'سنة';
     }
   }
 
-  /// Start of the selected calendar period in local time.
+  /// Start of the selected period in local time.
+  /// [ProfitPeriod.month] = rolling last 30 days (not calendar month).
   DateTime startOf(DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
     switch (this) {
@@ -25,7 +26,7 @@ extension ProfitPeriodX on ProfitPeriod {
         final daysFromSaturday = (now.weekday + 1) % 7;
         return today.subtract(Duration(days: daysFromSaturday));
       case ProfitPeriod.month:
-        return DateTime(now.year, now.month, 1);
+        return today.subtract(const Duration(days: 29));
       case ProfitPeriod.year:
         return DateTime(now.year, 1, 1);
     }

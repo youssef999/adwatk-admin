@@ -11,10 +11,14 @@ import '../../../shared/widgets/feedback/app_error_state.dart';
 import '../../../shared/widgets/feedback/app_loader.dart';
 import '../../../shared/widgets/layout/app_scaffold.dart';
 import '../controllers/commissions_controller.dart';
+import '../widgets/app_profit_trans_card.dart';
 import '../widgets/app_profits_header.dart';
 import '../widgets/commissions_detail_panel.dart';
 import '../widgets/incentive_request_card.dart';
-import '../widgets/provider_commission_card.dart';
+import '../widgets/shipment_profits_header.dart';
+import '../widgets/shipment_wallet_card.dart';
+import '../widgets/vendor_profits_header.dart';
+import '../widgets/vendor_wallet_card.dart';
 
 class CommissionsPage extends StatelessWidget {
   const CommissionsPage({super.key});
@@ -44,14 +48,18 @@ class CommissionsPage extends StatelessWidget {
             id: CommissionsController.listId,
             builder: (controller) {
               if (controller.isLoading &&
-                  controller.commissions.isEmpty &&
+                  controller.appProfitTrans.isEmpty &&
+                  controller.vendorWallet.isEmpty &&
+                  controller.shipmentWallet.isEmpty &&
                   controller.incentives.isEmpty &&
                   controller.appCommissionSettings == null) {
                 return const AppLoader(message: 'جاري تحميل العمولات...');
               }
 
               if (controller.errorMessage != null &&
-                  controller.commissions.isEmpty &&
+                  controller.appProfitTrans.isEmpty &&
+                  controller.vendorWallet.isEmpty &&
+                  controller.shipmentWallet.isEmpty &&
                   controller.incentives.isEmpty) {
                 return AppErrorState(
                   message: controller.errorMessage!,
@@ -60,7 +68,9 @@ class CommissionsPage extends StatelessWidget {
               }
 
               if (!isWide &&
-                  (controller.selectedCommission != null ||
+                  (controller.selectedProfitTrans != null ||
+                      controller.selectedVendorWallet != null ||
+                      controller.selectedShipmentWallet != null ||
                       controller.selectedIncentive != null)) {
                 return const CommissionsDetailPanel(showBack: true);
               }
@@ -112,7 +122,7 @@ class _ListPane extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'فلتر بائع: ${controller.workerFilter}',
+                    'فلتر تاجر: ${controller.workerFilter}',
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.primaryDark,
                       fontWeight: FontWeight.w600,
@@ -135,7 +145,16 @@ class _ListPane extends StatelessWidget {
           controller: controller.searchController,
           onChanged: controller.onSearchChanged,
           decoration: InputDecoration(
-            hintText: 'بحث بالمحل أو الطلب أو العرض أو workerId...',
+            hintText: switch (controller.activeTab) {
+              CommissionsTab.profits =>
+                'بحث بالطلب أو الطلبية أو الدفع أو المعاملة...',
+              CommissionsTab.vendorWallet =>
+                'بحث بالمنتج أو التاجر أو الطلب أو الحالة...',
+              CommissionsTab.shipmentWallet =>
+                'بحث بشركة الشحن أو المنتج أو الطلب أو الحالة...',
+              CommissionsTab.incentives =>
+                'بحث بالمحل أو الحالة أو workerId...',
+            },
             hintStyle: AppTextStyles.body2,
             prefixIcon: const Icon(Icons.search),
             filled: true,
@@ -143,42 +162,69 @@ class _ListPane extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _TabChip(
-                label: 'أرباح التطبيق',
-                count: controller.profitTransactions.length,
-                selected: controller.activeTab == CommissionsTab.profits,
-                onTap: () => controller.setTab(CommissionsTab.profits),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              _TabChip(
-                label: 'عمولات البائعين',
-                count: controller.filteredCommissions.length,
-                selected: controller.activeTab ==
-                    CommissionsTab.providerCommissions,
-                onTap: () =>
-                    controller.setTab(CommissionsTab.providerCommissions),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              _TabChip(
-                label: 'طلبات الحوافز',
-                count: controller.filteredIncentives.length,
-                selected:
-                    controller.activeTab == CommissionsTab.incentives,
-                onTap: () => controller.setTab(CommissionsTab.incentives),
-              ),
-            ],
-          ),
+        Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _TabChip(
+                    label: 'أرباح التطبيق',
+                    count: controller.profitTransactions.length,
+                    selected:
+                        controller.activeTab == CommissionsTab.profits,
+                    onTap: () =>
+                        controller.setTab(CommissionsTab.profits),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _TabChip(
+                    label: 'أرباح التجار',
+                    count: controller.filteredVendorWallet.length,
+                    selected: controller.activeTab ==
+                        CommissionsTab.vendorWallet,
+                    onTap: () =>
+                        controller.setTab(CommissionsTab.vendorWallet),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: _TabChip(
+                    label: 'شركات الشحن',
+                    count: controller.filteredShipmentWallet.length,
+                    selected: controller.activeTab ==
+                        CommissionsTab.shipmentWallet,
+                    onTap: () =>
+                        controller.setTab(CommissionsTab.shipmentWallet),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _TabChip(
+                    label: 'طلبات الحوافز',
+                    count: controller.filteredIncentives.length,
+                    selected: controller.activeTab ==
+                        CommissionsTab.incentives,
+                    onTap: () =>
+                        controller.setTab(CommissionsTab.incentives),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.md),
         Expanded(
           child: switch (controller.activeTab) {
             CommissionsTab.profits => _ProfitsList(controller: controller),
-            CommissionsTab.providerCommissions =>
-              _CommissionsList(controller: controller),
+            CommissionsTab.vendorWallet =>
+              _VendorWalletList(controller: controller),
+            CommissionsTab.shipmentWallet =>
+              _ShipmentWalletList(controller: controller),
             CommissionsTab.incentives =>
               _IncentivesList(controller: controller),
           },
@@ -210,9 +256,9 @@ class _TabChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: Container(
-          constraints: const BoxConstraints(minWidth: 120),
+          width: double.infinity,
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
+            horizontal: AppSpacing.sm,
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
@@ -232,6 +278,8 @@ class _TabChip extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               Text(
                 '$count',
@@ -278,50 +326,98 @@ class _ProfitsList extends StatelessWidget {
         }
 
         final item = items[index - 1];
-        return ProviderCommissionCard(
-          commission: item,
-          compact: true,
-          selected: controller.selectedCommission?.id == item.id,
-          onTap: () => controller.selectCommission(item),
+        return AppProfitTransCard(
+          transaction: item,
+          selected: controller.selectedProfitTrans?.id == item.id,
+          onTap: () => controller.selectProfitTrans(item),
         );
       },
     );
   }
 }
 
-class _CommissionsList extends StatelessWidget {
-  const _CommissionsList({required this.controller});
+class _VendorWalletList extends StatelessWidget {
+  const _VendorWalletList({required this.controller});
 
   final CommissionsController controller;
 
   @override
   Widget build(BuildContext context) {
-    if (controller.commissions.isEmpty) {
-      return const AppEmptyState(
-        title: 'لا توجد عمولات',
-        subtitle: 'ستظهر عمولات البائعين هنا عند اكتمال المبيعات',
-        icon: Icons.payments_outlined,
-      );
-    }
-    if (controller.filteredCommissions.isEmpty) {
-      return const AppEmptyState(
-        title: 'لا نتائج',
-        subtitle: 'عدّل كلمات البحث',
-        icon: Icons.search_off,
-      );
-    }
+    final items = controller.filteredVendorWallet;
 
     return ListView.separated(
-      itemCount: controller.filteredCommissions.length,
+      itemCount: items.isEmpty ? 2 : items.length + 1,
       separatorBuilder: (context, index) =>
           const SizedBox(height: AppSpacing.sm),
       itemBuilder: (context, index) {
-        final item = controller.filteredCommissions[index];
-        return ProviderCommissionCard(
-          commission: item,
-          compact: true,
-          selected: controller.selectedCommission?.id == item.id,
-          onTap: () => controller.selectCommission(item),
+        if (index == 0) {
+          return const VendorProfitsHeader();
+        }
+
+        if (items.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.only(top: AppSpacing.lg),
+            child: AppEmptyState(
+              title: 'لا أرباح تجار في هذه الفترة',
+              subtitle: 'ستظهر معاملات vendors_wallet هنا',
+              icon: Icons.account_balance_wallet_outlined,
+            ),
+          );
+        }
+
+        final item = items[index - 1];
+        return VendorWalletCard(
+          entry: item,
+          selected: controller.selectedVendorWallet?.id == item.id,
+          isMarkingSent: controller.markingVendorSentId == item.id,
+          onTap: () => controller.selectVendorWallet(item),
+          onMarkSent: item.canMarkAsSent
+              ? () => controller.confirmMarkVendorWalletSent(item)
+              : null,
+        );
+      },
+    );
+  }
+}
+
+class _ShipmentWalletList extends StatelessWidget {
+  const _ShipmentWalletList({required this.controller});
+
+  final CommissionsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = controller.filteredShipmentWallet;
+
+    return ListView.separated(
+      itemCount: items.isEmpty ? 2 : items.length + 1,
+      separatorBuilder: (context, index) =>
+          const SizedBox(height: AppSpacing.sm),
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return const ShipmentProfitsHeader();
+        }
+
+        if (items.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.only(top: AppSpacing.lg),
+            child: AppEmptyState(
+              title: 'لا معاملات شحن في هذه الفترة',
+              subtitle: 'ستظهر معاملات shipments_wallet هنا',
+              icon: Icons.local_shipping_outlined,
+            ),
+          );
+        }
+
+        final item = items[index - 1];
+        return ShipmentWalletCard(
+          entry: item,
+          selected: controller.selectedShipmentWallet?.id == item.id,
+          isMarkingSent: controller.markingShipmentSentId == item.id,
+          onTap: () => controller.selectShipmentWallet(item),
+          onMarkSent: item.isDone
+              ? () => controller.confirmMarkShipmentWalletSent(item)
+              : null,
         );
       },
     );

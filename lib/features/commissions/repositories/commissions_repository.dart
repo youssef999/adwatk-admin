@@ -2,8 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../core/constants/firestore_collections.dart';
 import '../models/app_commission_model.dart';
+import '../models/app_profit_trans_model.dart';
 import '../models/incentive_request_model.dart';
 import '../models/provider_commission_model.dart';
+import '../models/shipment_wallet_model.dart';
+import '../models/vendor_wallet_model.dart';
 
 class CommissionsRepository {
   CommissionsRepository({FirebaseFirestore? firestore})
@@ -19,6 +22,15 @@ class CommissionsRepository {
 
   CollectionReference<Map<String, dynamic>> get _appCommission =>
       _firestore.collection(FirestoreCollections.appCommission);
+
+  CollectionReference<Map<String, dynamic>> get _appProfitsTrans =>
+      _firestore.collection(FirestoreCollections.appProfitsTrans);
+
+  CollectionReference<Map<String, dynamic>> get _vendorsWallet =>
+      _firestore.collection(FirestoreCollections.vendorsWallet);
+
+  CollectionReference<Map<String, dynamic>> get _shipmentsWallet =>
+      _firestore.collection(FirestoreCollections.shipmentsWallet);
 
   Future<List<ProviderCommissionModel>> fetchProviderCommissions({
     String? workerId,
@@ -94,6 +106,96 @@ class CommissionsRepository {
     result.sort((a, b) => (b.createdAt ?? DateTime(0))
         .compareTo(a.createdAt ?? DateTime(0)));
     return result;
+  }
+
+  /// Loads all vendor wallet rows. Totals must sum `status == done` only.
+  Future<List<VendorWalletModel>> fetchVendorWalletEntries({
+    String? vendorId,
+  }) async {
+    Query<Map<String, dynamic>> query = _vendorsWallet;
+
+    if (vendorId != null && vendorId.isNotEmpty) {
+      query = query.where('vendor_id', isEqualTo: vendorId);
+    }
+
+    try {
+      final snapshot =
+          await query.orderBy('created_at', descending: true).get();
+      return snapshot.docs.map(VendorWalletModel.fromFirestore).toList();
+    } on FirebaseException catch (e) {
+      if (e.code == 'failed-precondition') {
+        final snapshot = await query.get();
+        final list =
+            snapshot.docs.map(VendorWalletModel.fromFirestore).toList();
+        list.sort(
+          (a, b) => (b.effectiveAt ?? DateTime(0))
+              .compareTo(a.effectiveAt ?? DateTime(0)),
+        );
+        return list;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> markVendorWalletAsSent(String id) async {
+    await _vendorsWallet.doc(id).update({'status': 'sent'});
+  }
+
+  /// Loads all shipping wallet rows. Totals must sum `status == done` only.
+  Future<List<ShipmentWalletModel>> fetchShipmentWalletEntries({
+    String? shipmentCompanyId,
+  }) async {
+    Query<Map<String, dynamic>> query = _shipmentsWallet;
+
+    if (shipmentCompanyId != null && shipmentCompanyId.isNotEmpty) {
+      query =
+          query.where('shipment_company_id', isEqualTo: shipmentCompanyId);
+    }
+
+    try {
+      final snapshot =
+          await query.orderBy('created_at', descending: true).get();
+      return snapshot.docs.map(ShipmentWalletModel.fromFirestore).toList();
+    } on FirebaseException catch (e) {
+      if (e.code == 'failed-precondition') {
+        final snapshot = await query.get();
+        final list =
+            snapshot.docs.map(ShipmentWalletModel.fromFirestore).toList();
+        list.sort(
+          (a, b) => (b.effectiveAt ?? DateTime(0))
+              .compareTo(a.effectiveAt ?? DateTime(0)),
+        );
+        return list;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> markShipmentWalletAsSent(String id) async {
+    await _shipmentsWallet.doc(id).update({'status': 'sent'});
+  }
+
+  /// Loads all app profit ledger rows. Totals must sum `status == done` only.
+  Future<List<AppProfitTransModel>> fetchAppProfitTransactions() async {
+    Query<Map<String, dynamic>> query = _appProfitsTrans;
+
+    try {
+      final snapshot =
+          await query.orderBy('created_at', descending: true).get();
+      return snapshot.docs.map(AppProfitTransModel.fromFirestore).toList();
+    } on FirebaseException catch (e) {
+      if (e.code == 'failed-precondition') {
+        final snapshot = await query.get();
+        final list =
+            snapshot.docs.map(AppProfitTransModel.fromFirestore).toList();
+        list.sort(
+          (a, b) => (b.effectiveAt ?? DateTime(0))
+              .compareTo(a.effectiveAt ?? DateTime(0)),
+        );
+        return list;
+      }
+      rethrow;
+    }
   }
 
   /// Loads the active app commission settings document (first doc in collection).

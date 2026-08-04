@@ -7,8 +7,8 @@ import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/utils/profit_period.dart';
 import '../../../shared/widgets/buttons/app_button.dart';
+import '../../../shared/widgets/layout/profit_period_filter.dart';
 import '../controllers/commissions_controller.dart';
 
 class AppProfitsHeader extends StatelessWidget {
@@ -49,14 +49,13 @@ class AppProfitsHeader extends StatelessWidget {
                   Row(
                     children: [
                       _HeaderMeta(
-                        label: 'المعاملات',
+                        label: 'كل المعاملات',
                         value: '${controller.profitTransactions.length}',
                       ),
                       const SizedBox(width: AppSpacing.lg),
                       _HeaderMeta(
-                        label: 'إجمالي المبيعات',
-                        value:
-                            '${_formatMoney(controller.totalSalesInPeriod)} د.ع',
+                        label: 'مكتمل (done)',
+                        value: '${controller.doneProfitTransactions.length}',
                       ),
                     ],
                   ),
@@ -64,50 +63,9 @@ class AppProfitsHeader extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            Row(
-              children: ProfitPeriod.values.map((period) {
-                final selected = controller.profitPeriod == period;
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsetsDirectional.only(
-                      end: period == ProfitPeriod.year ? 0 : AppSpacing.xs,
-                    ),
-                    child: Material(
-                      color: selected
-                          ? AppColors.primary
-                          : AppColors.surface,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      child: InkWell(
-                        onTap: () => controller.setProfitPeriod(period),
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: AppSpacing.sm,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            border: Border.all(
-                              color: selected
-                                  ? AppColors.primary
-                                  : AppColors.border,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            period.labelAr,
-                            style: AppTextStyles.caption.copyWith(
-                              color: selected
-                                  ? AppColors.surface
-                                  : AppColors.textSecondary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
+            ProfitPeriodFilter(
+              selected: controller.profitPeriod,
+              onSelected: controller.setProfitPeriod,
             ),
           ],
         );

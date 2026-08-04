@@ -12,6 +12,10 @@ class FirestoreCollections {
   static const String providerCommission = 'provider_commission';
   static const String incentiveRequests = 'incentive_requests';
   static const String appCommission = 'app_commission';
+  /// Exact Firestore spelling — app profit ledger transactions.
+  static const String appProfitsTrans = 'app_profits_trans';
+  static const String vendorsWallet = 'vendors_wallet';
+  static const String shipmentsWallet = 'shipments_wallet';
   static const String phoneLookup = 'phone_lookup';
   static const String saleParts = 'sale_parts';
 }

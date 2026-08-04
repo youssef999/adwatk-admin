@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_radius.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/profit_period.dart';
 import '../../../shared/widgets/feedback/app_snackbar.dart';
 import '../models/app_commission_model.dart';
+import '../models/app_profit_trans_model.dart';
 import '../models/incentive_request_model.dart';
 import '../models/provider_commission_model.dart';
+import '../models/shipment_wallet_model.dart';
+import '../models/vendor_wallet_model.dart';
 import '../repositories/commissions_repository.dart';
 
-enum CommissionsTab { profits, providerCommissions, incentives }
+enum CommissionsTab { profits, vendorWallet, shipmentWallet, incentives }
 
 class CommissionsController extends GetxController {
   CommissionsController({CommissionsRepository? repository})
@@ -25,12 +32,18 @@ class CommissionsController extends GetxController {
 
   CommissionsTab activeTab = CommissionsTab.profits;
   ProfitPeriod profitPeriod = ProfitPeriod.month;
+  ProfitPeriod vendorProfitPeriod = ProfitPeriod.month;
+  ProfitPeriod shipmentProfitPeriod = ProfitPeriod.month;
 
-  List<ProviderCommissionModel> commissions = [];
+  List<AppProfitTransModel> appProfitTrans = [];
+  List<VendorWalletModel> vendorWallet = [];
+  List<ShipmentWalletModel> shipmentWallet = [];
   List<IncentiveRequestModel> incentives = [];
   List<ProviderCommissionModel> incentiveLinkedCommissions = [];
 
-  ProviderCommissionModel? selectedCommission;
+  AppProfitTransModel? selectedProfitTrans;
+  VendorWalletModel? selectedVendorWallet;
+  ShipmentWalletModel? selectedShipmentWallet;
   IncentiveRequestModel? selectedIncentive;
   AppCommissionModel? appCommissionSettings;
 
@@ -39,19 +52,9 @@ class CommissionsController extends GetxController {
   bool isLoading = false;
   bool isLoadingDetail = false;
   bool isSavingAppPercent = false;
+  String? markingVendorSentId;
+  String? markingShipmentSentId;
   String? errorMessage;
-
-  List<ProviderCommissionModel> get filteredCommissions {
-    final q = searchQuery.trim().toLowerCase();
-    if (q.isEmpty) return commissions;
-    return commissions.where((c) {
-      return c.shopName.toLowerCase().contains(q) ||
-          c.workerId.toLowerCase().contains(q) ||
-          c.requestId.toLowerCase().contains(q) ||
-          c.offerId.toLowerCase().contains(q) ||
-          c.id.toLowerCase().contains(q);
-    }).toList();
-  }
 
   List<IncentiveRequestModel> get filteredIncentives {
     final q = searchQuery.trim().toLowerCase();
@@ -64,31 +67,118 @@ class CommissionsController extends GetxController {
     }).toList();
   }
 
-  /// Transactions in the selected profit period (optionally narrowed by search).
-  List<ProviderCommissionModel> get profitTransactions {
+  /// All vendor wallet rows in period (any status), action-needed first.
+  List<VendorWalletModel> get filteredVendorWallet {
+    final start = vendorProfitPeriod.startOf(DateTime.now());
+    var inPeriod = vendorWallet.where((e) {
+      final at = e.effectiveAt;
+      if (at == null) return false;
+      return !at.isBefore(start);
+    }).toList();
+
+    final q = searchQuery.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      inPeriod = inPeriod.where((e) {
+        return e.productName.toLowerCase().contains(q) ||
+            e.customerName.toLowerCase().contains(q) ||
+            e.vendorId.toLowerCase().contains(q) ||
+            e.requestId.toLowerCase().contains(q) ||
+            e.orderId.toLowerCase().contains(q) ||
+            e.status.toLowerCase().contains(q) ||
+            e.id.toLowerCase().contains(q);
+      }).toList();
+    }
+
+    inPeriod.sort((a, b) {
+      final byStatus = a.listPriority.compareTo(b.listPriority);
+      if (byStatus != 0) return byStatus;
+      return (b.effectiveAt ?? DateTime(0))
+          .compareTo(a.effectiveAt ?? DateTime(0));
+    });
+    return inPeriod;
+  }
+
+  /// Only `done` counts toward vendor profit total.
+  List<VendorWalletModel> get doneVendorWalletEntries =>
+      filteredVendorWallet.where((e) => e.isDone).toList();
+
+  List<VendorWalletModel> get requestSentVendorWalletEntries =>
+      filteredVendorWallet.where((e) => e.isRequestSent).toList();
+
+  num get totalVendorProfit =>
+      doneVendorWalletEntries.fold<num>(0, (sum, e) => sum + e.amount);
+
+  /// All shipment wallet rows in period (any status), organized by status.
+  List<ShipmentWalletModel> get filteredShipmentWallet {
+    final start = shipmentProfitPeriod.startOf(DateTime.now());
+    var inPeriod = shipmentWallet.where((e) {
+      final at = e.effectiveAt;
+      if (at == null) return false;
+      return !at.isBefore(start);
+    }).toList();
+
+    final q = searchQuery.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      inPeriod = inPeriod.where((e) {
+        return e.shipmentCompanyName.toLowerCase().contains(q) ||
+            e.productName.toLowerCase().contains(q) ||
+            e.customerName.toLowerCase().contains(q) ||
+            e.shipmentCompanyId.toLowerCase().contains(q) ||
+            e.requestId.toLowerCase().contains(q) ||
+            e.orderId.toLowerCase().contains(q) ||
+            e.status.toLowerCase().contains(q) ||
+            e.id.toLowerCase().contains(q);
+      }).toList();
+    }
+
+    inPeriod.sort((a, b) {
+      final byStatus = a.listPriority.compareTo(b.listPriority);
+      if (byStatus != 0) return byStatus;
+      return (b.effectiveAt ?? DateTime(0))
+          .compareTo(a.effectiveAt ?? DateTime(0));
+    });
+    return inPeriod;
+  }
+
+  /// Only `done` counts toward shipment wallet total.
+  List<ShipmentWalletModel> get doneShipmentWalletEntries =>
+      filteredShipmentWallet.where((e) => e.isDone).toList();
+
+  List<ShipmentWalletModel> get pendingShipmentWalletEntries =>
+      filteredShipmentWallet.where((e) => e.isPending).toList();
+
+  num get totalShipmentWallet =>
+      doneShipmentWalletEntries.fold<num>(0, (sum, e) => sum + e.amount);
+
+  /// All app profit txs in period (any status) for the list.
+  List<AppProfitTransModel> get profitTransactions {
     final start = profitPeriod.startOf(DateTime.now());
-    final inPeriod = commissions.where((c) {
-      final created = c.createdAt;
-      if (created == null) return false;
-      return !created.isBefore(start);
+    final inPeriod = appProfitTrans.where((t) {
+      final at = t.effectiveAt;
+      if (at == null) return false;
+      return !at.isBefore(start);
     });
 
     final q = searchQuery.trim().toLowerCase();
     if (q.isEmpty) return inPeriod.toList();
-    return inPeriod.where((c) {
-      return c.shopName.toLowerCase().contains(q) ||
-          c.workerId.toLowerCase().contains(q) ||
-          c.requestId.toLowerCase().contains(q) ||
-          c.offerId.toLowerCase().contains(q) ||
-          c.id.toLowerCase().contains(q);
+    return inPeriod.where((t) {
+      return t.requestId.toLowerCase().contains(q) ||
+          t.orderId.toLowerCase().contains(q) ||
+          t.paymentTransactionId.toLowerCase().contains(q) ||
+          t.shipmentId.toLowerCase().contains(q) ||
+          t.shipmentOrderId.toLowerCase().contains(q) ||
+          t.paymentType.toLowerCase().contains(q) ||
+          t.status.toLowerCase().contains(q) ||
+          t.id.toLowerCase().contains(q);
     }).toList();
   }
 
-  num get totalAppProfit =>
-      profitTransactions.fold<num>(0, (sum, c) => sum + c.appCommission);
+  /// Only `done` rows count toward app profit total.
+  List<AppProfitTransModel> get doneProfitTransactions =>
+      profitTransactions.where((t) => t.isDone).toList();
 
-  num get totalSalesInPeriod =>
-      profitTransactions.fold<num>(0, (sum, c) => sum + c.price);
+  num get totalAppProfit =>
+      doneProfitTransactions.fold<num>(0, (sum, t) => sum + t.amount);
 
   @override
   void onInit() {
@@ -121,22 +211,46 @@ class CommissionsController extends GetxController {
 
     try {
       final results = await Future.wait([
-        _repository.fetchProviderCommissions(workerId: workerFilter),
+        _repository.fetchAppProfitTransactions(),
+        _repository.fetchVendorWalletEntries(vendorId: workerFilter),
+        _repository.fetchShipmentWalletEntries(),
         _repository.fetchIncentiveRequests(workerId: workerFilter),
         _repository.fetchAppCommissionSettings(),
       ]);
-      commissions = results[0] as List<ProviderCommissionModel>;
-      incentives = results[1] as List<IncentiveRequestModel>;
-      appCommissionSettings = results[2] as AppCommissionModel?;
+      appProfitTrans = results[0] as List<AppProfitTransModel>;
+      vendorWallet = results[1] as List<VendorWalletModel>;
+      shipmentWallet = results[2] as List<ShipmentWalletModel>;
+      incentives = results[3] as List<IncentiveRequestModel>;
+      appCommissionSettings = results[4] as AppCommissionModel?;
       appPercentController.text =
           (appCommissionSettings?.value ?? 0).toString();
 
-      if (selectedCommission != null) {
+      if (selectedProfitTrans != null) {
         final still =
-            commissions.any((c) => c.id == selectedCommission!.id);
+            appProfitTrans.any((t) => t.id == selectedProfitTrans!.id);
         if (still) {
-          selectedCommission =
-              commissions.firstWhere((c) => c.id == selectedCommission!.id);
+          selectedProfitTrans =
+              appProfitTrans.firstWhere((t) => t.id == selectedProfitTrans!.id);
+        } else {
+          clearSelection();
+        }
+      }
+      if (selectedVendorWallet != null) {
+        final still =
+            vendorWallet.any((e) => e.id == selectedVendorWallet!.id);
+        if (still) {
+          selectedVendorWallet =
+              vendorWallet.firstWhere((e) => e.id == selectedVendorWallet!.id);
+        } else {
+          clearSelection();
+        }
+      }
+      if (selectedShipmentWallet != null) {
+        final still =
+            shipmentWallet.any((e) => e.id == selectedShipmentWallet!.id);
+        if (still) {
+          selectedShipmentWallet = shipmentWallet
+              .firstWhere((e) => e.id == selectedShipmentWallet!.id);
         } else {
           clearSelection();
         }
@@ -172,6 +286,18 @@ class CommissionsController extends GetxController {
     update([listId]);
   }
 
+  void setVendorProfitPeriod(ProfitPeriod period) {
+    if (vendorProfitPeriod == period) return;
+    vendorProfitPeriod = period;
+    update([listId]);
+  }
+
+  void setShipmentProfitPeriod(ProfitPeriod period) {
+    if (shipmentProfitPeriod == period) return;
+    shipmentProfitPeriod = period;
+    update([listId]);
+  }
+
   void onSearchChanged(String value) {
     searchQuery = value;
     update([listId]);
@@ -182,8 +308,28 @@ class CommissionsController extends GetxController {
     loadAll();
   }
 
-  void selectCommission(ProviderCommissionModel commission) {
-    selectedCommission = commission;
+  void selectProfitTrans(AppProfitTransModel transaction) {
+    selectedProfitTrans = transaction;
+    selectedVendorWallet = null;
+    selectedShipmentWallet = null;
+    selectedIncentive = null;
+    incentiveLinkedCommissions = [];
+    update([listId, detailId]);
+  }
+
+  void selectVendorWallet(VendorWalletModel entry) {
+    selectedVendorWallet = entry;
+    selectedProfitTrans = null;
+    selectedShipmentWallet = null;
+    selectedIncentive = null;
+    incentiveLinkedCommissions = [];
+    update([listId, detailId]);
+  }
+
+  void selectShipmentWallet(ShipmentWalletModel entry) {
+    selectedShipmentWallet = entry;
+    selectedVendorWallet = null;
+    selectedProfitTrans = null;
     selectedIncentive = null;
     incentiveLinkedCommissions = [];
     update([listId, detailId]);
@@ -191,17 +337,350 @@ class CommissionsController extends GetxController {
 
   Future<void> selectIncentive(IncentiveRequestModel incentive) async {
     selectedIncentive = incentive;
-    selectedCommission = null;
+    selectedVendorWallet = null;
+    selectedShipmentWallet = null;
+    selectedProfitTrans = null;
     update([listId, detailId]);
     await _loadIncentiveLinks(incentive);
   }
 
   void clearSelection() {
-    selectedCommission = null;
+    selectedProfitTrans = null;
+    selectedVendorWallet = null;
+    selectedShipmentWallet = null;
     selectedIncentive = null;
     incentiveLinkedCommissions = [];
     isLoadingDetail = false;
     update([listId, detailId]);
+  }
+
+  Future<void> confirmMarkVendorWalletSent(VendorWalletModel entry) async {
+    if (!entry.canMarkAsSent || markingVendorSentId != null) return;
+
+    final currency = entry.currency.isEmpty ? 'د.ع' : entry.currency;
+    final product = entry.productName.isEmpty ? 'معاملة أرباح' : entry.productName;
+    final fromStatus = entry.status.trim().toLowerCase();
+
+    final confirmed = await Get.dialog<bool>(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: const Icon(
+                      Icons.send_outlined,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      'إرسال الأرباح للتاجر',
+                      style: AppTextStyles.h5,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'هل أنت متأكد من تحويل الحالة من $fromStatus إلى sent؟',
+                style: AppTextStyles.body1,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(product, style: AppTextStyles.h6),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'المبلغ: ${entry.amount} $currency',
+                      style: AppTextStyles.body2.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    if (entry.vendorId.trim().isNotEmpty)
+                      Text(
+                        'التاجر: ${entry.vendorId}',
+                        style: AppTextStyles.caption,
+                      ),
+                    Text(
+                      '$fromStatus → sent',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.info,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(result: false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.md,
+                        ),
+                        side: const BorderSide(color: AppColors.border),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                      ),
+                      child: Text(
+                        'إلغاء',
+                        style: AppTextStyles.button.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Get.back(result: true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.surface,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.md,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                      ),
+                      child: Text(
+                        'تأكيد الإرسال',
+                        style: AppTextStyles.button.copyWith(
+                          color: AppColors.surface,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+    await markVendorWalletAsSent(entry);
+  }
+
+  Future<void> markVendorWalletAsSent(VendorWalletModel entry) async {
+    if (!entry.canMarkAsSent) return;
+
+    markingVendorSentId = entry.id;
+    update([listId, detailId]);
+
+    try {
+      await _repository.markVendorWalletAsSent(entry.id);
+      final updated = entry.copyWith(status: 'sent');
+      final index = vendorWallet.indexWhere((e) => e.id == entry.id);
+      if (index >= 0) vendorWallet[index] = updated;
+      if (selectedVendorWallet?.id == entry.id) {
+        selectedVendorWallet = updated;
+      }
+      AppSnackbar.success('تم تحديث الحالة إلى sent');
+    } catch (_) {
+      AppSnackbar.error('تعذر تحديث حالة إرسال الأرباح');
+    } finally {
+      markingVendorSentId = null;
+      update([listId, detailId]);
+    }
+  }
+
+  Future<void> confirmMarkShipmentWalletSent(
+    ShipmentWalletModel entry,
+  ) async {
+    if (!entry.isDone || markingShipmentSentId != null) return;
+
+    final company = entry.shipmentCompanyName.isEmpty
+        ? 'شركة الشحن'
+        : entry.shipmentCompanyName;
+    final currency = entry.currency.isEmpty ? 'د.ع' : entry.currency;
+
+    final confirmed = await Get.dialog<bool>(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.info.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: const Icon(
+                      Icons.local_shipping_outlined,
+                      color: AppColors.info,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      'تأكيد تحويل الحالة',
+                      style: AppTextStyles.h5,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'هل أنت متأكد من تحويل هذه المعاملة من done إلى sent؟',
+                style: AppTextStyles.body1,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(company, style: AppTextStyles.h6),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'المبلغ: ${entry.amount} $currency',
+                      style: AppTextStyles.body2.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: entry.amount < 0
+                            ? AppColors.error
+                            : AppColors.success,
+                      ),
+                    ),
+                    if (entry.productName.trim().isNotEmpty)
+                      Text(
+                        'المنتج: ${entry.productName}',
+                        style: AppTextStyles.caption,
+                      ),
+                    Text(
+                      'done → sent',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.info,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(result: false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.md,
+                        ),
+                        side: const BorderSide(color: AppColors.border),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                      ),
+                      child: Text(
+                        'إلغاء',
+                        style: AppTextStyles.button.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Get.back(result: true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.info,
+                        foregroundColor: AppColors.surface,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.md,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                      ),
+                      child: Text(
+                        'تأكيد الإرسال',
+                        style: AppTextStyles.button.copyWith(
+                          color: AppColors.surface,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+    await markShipmentWalletAsSent(entry);
+  }
+
+  Future<void> markShipmentWalletAsSent(ShipmentWalletModel entry) async {
+    if (!entry.isDone) return;
+
+    markingShipmentSentId = entry.id;
+    update([listId, detailId]);
+
+    try {
+      await _repository.markShipmentWalletAsSent(entry.id);
+      final updated = entry.copyWith(status: 'sent');
+      final index = shipmentWallet.indexWhere((e) => e.id == entry.id);
+      if (index >= 0) shipmentWallet[index] = updated;
+      if (selectedShipmentWallet?.id == entry.id) {
+        selectedShipmentWallet = updated;
+      }
+      AppSnackbar.success('تم تحويل الحالة إلى sent');
+    } catch (_) {
+      AppSnackbar.error('تعذر تحديث حالة معاملة الشحن');
+    } finally {
+      markingShipmentSentId = null;
+      update([listId, detailId]);
+    }
   }
 
   Future<void> saveAppCommissionPercent() async {

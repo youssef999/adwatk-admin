@@ -13,7 +13,10 @@ import '../../../shared/widgets/feedback/app_empty_state.dart';
 import '../../../shared/widgets/feedback/app_loader.dart';
 import '../../requests/widgets/status_badge.dart';
 import '../controllers/commissions_controller.dart';
+import 'app_profit_trans_card.dart';
 import 'provider_commission_card.dart';
+import 'shipment_wallet_card.dart';
+import 'vendor_wallet_card.dart';
 
 class CommissionsDetailPanel extends StatelessWidget {
   const CommissionsDetailPanel({super.key, this.showBack = false});
@@ -25,12 +28,14 @@ class CommissionsDetailPanel extends StatelessWidget {
     return GetBuilder<CommissionsController>(
       id: CommissionsController.detailId,
       builder: (controller) {
-        if (controller.selectedCommission == null &&
+        if (controller.selectedProfitTrans == null &&
+            controller.selectedVendorWallet == null &&
+            controller.selectedShipmentWallet == null &&
             controller.selectedIncentive == null) {
           return const AppEmptyState(
             title: 'اختر عنصرًا',
             subtitle:
-                'حدد عمولة بائع أو طلب حافز لعرض الارتباط مع الطلب والعرض والبائع',
+                'حدد ربح تطبيق أو تاجر أو شركة شحن أو طلب حافز لعرض التفاصيل',
             icon: Icons.hub_outlined,
           );
         }
@@ -50,8 +55,12 @@ class CommissionsDetailPanel extends StatelessWidget {
             Expanded(
               child: ListView(
                 children: [
-                  if (controller.selectedCommission != null)
-                    _CommissionDetail(controller: controller)
+                  if (controller.selectedProfitTrans != null)
+                    _ProfitTransDetail(controller: controller)
+                  else if (controller.selectedVendorWallet != null)
+                    _VendorWalletDetail(controller: controller)
+                  else if (controller.selectedShipmentWallet != null)
+                    _ShipmentWalletDetail(controller: controller)
                   else
                     _IncentiveDetail(controller: controller),
                 ],
@@ -64,67 +73,152 @@ class CommissionsDetailPanel extends StatelessWidget {
   }
 }
 
-class _CommissionDetail extends StatelessWidget {
-  const _CommissionDetail({required this.controller});
+class _ProfitTransDetail extends StatelessWidget {
+  const _ProfitTransDetail({required this.controller});
 
   final CommissionsController controller;
 
   @override
   Widget build(BuildContext context) {
-    final c = controller.selectedCommission!;
+    final t = controller.selectedProfitTrans!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('تفاصيل عمولة البائع', style: AppTextStyles.h4),
+        Row(
+          children: [
+            Expanded(
+              child: Text('تفاصيل ربح التطبيق', style: AppTextStyles.h4),
+            ),
+            StatusBadge(status: t.status),
+          ],
+        ),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          'provider_commission ↔ request + offer + vendor',
+          'app_profits_trans — تُعرض كل المعاملات، ويُحتسب الإجمالي فقط عند status = done',
           style: AppTextStyles.caption,
         ),
         const SizedBox(height: AppSpacing.lg),
-        ProviderCommissionCard(commission: c),
+        AppProfitTransCard(transaction: t),
+        const SizedBox(height: AppSpacing.lg),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('بيانات المعاملة', style: AppTextStyles.h6),
+              const SizedBox(height: AppSpacing.md),
+              _CalcRow(
+                label: 'المبلغ (amount)',
+                value: '${t.amount} د.ع',
+                emphasize: true,
+              ),
+              _CalcRow(label: 'نوع الدفع', value: t.paymentType.isEmpty ? '—' : t.paymentType),
+              _CalcRow(label: 'الحالة', value: t.status.isEmpty ? '—' : t.status),
+              _CalcRow(
+                label: 'اكتمال',
+                value: DateFormatUtils.format(t.completedAt),
+              ),
+              _CalcRow(
+                label: 'إنشاء',
+                value: DateFormatUtils.format(t.createdAt),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: AppSpacing.lg),
         _RelationMap(
           items: [
-            if (c.requestId.trim().isNotEmpty)
+            if (t.requestId.trim().isNotEmpty)
               _RelationItem(
                 title: 'الطلب',
-                subtitle: c.requestId,
+                subtitle: t.requestId,
                 icon: Icons.assignment_outlined,
                 color: AppColors.info,
                 actionLabel: 'فتح الطلب',
                 onAction: () => DeepLinkNavigation.openRequest(
-                  requestId: c.requestId,
-                  offerId: c.offerId,
-                ),
-              ),
-            if (c.offerId.trim().isNotEmpty && c.requestId.trim().isNotEmpty)
-              _RelationItem(
-                title: 'العرض',
-                subtitle: c.offerId,
-                icon: Icons.local_offer_outlined,
-                color: AppColors.primary,
-                actionLabel: 'فتح العرض',
-                onAction: () => DeepLinkNavigation.openRequest(
-                  requestId: c.requestId,
-                  offerId: c.offerId,
-                ),
-              ),
-            if (c.workerId.trim().isNotEmpty)
-              _RelationItem(
-                title: 'البائع',
-                subtitle: c.shopName.trim().isEmpty
-                    ? c.workerId
-                    : '${c.shopName}\n${c.workerId}',
-                icon: Icons.storefront_outlined,
-                color: AppColors.secondary,
-                actionLabel: 'فتح البائع',
-                onAction: () => DeepLinkNavigation.openVendor(
-                  vendorId: c.workerId,
+                  requestId: t.requestId,
                 ),
               ),
           ],
+        ),
+        if (t.orderId.trim().isNotEmpty ||
+            t.paymentTransactionId.trim().isNotEmpty ||
+            t.shipmentOrderId.trim().isNotEmpty ||
+            t.shipmentId.trim().isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('المعرفات المرتبطة', style: AppTextStyles.h6),
+                const SizedBox(height: AppSpacing.md),
+                if (t.orderId.trim().isNotEmpty)
+                  _CalcRow(label: 'order_id', value: t.orderId),
+                if (t.paymentTransactionId.trim().isNotEmpty)
+                  _CalcRow(
+                    label: 'payment_transaction_id',
+                    value: t.paymentTransactionId,
+                  ),
+                if (t.shipmentOrderId.trim().isNotEmpty)
+                  _CalcRow(
+                    label: 'shipment_order_id',
+                    value: t.shipmentOrderId,
+                  ),
+                if (t.shipmentId.trim().isNotEmpty)
+                  _CalcRow(label: 'shipment_id', value: t.shipmentId),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _VendorWalletDetail extends StatelessWidget {
+  const _VendorWalletDetail({required this.controller});
+
+  final CommissionsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final e = controller.selectedVendorWallet!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text('تفاصيل أرباح التاجر', style: AppTextStyles.h4),
+            ),
+            StatusBadge(status: e.status),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          'vendors_wallet — تُعرض كل الحالات، ويُحتسب الإجمالي فقط عند status = done',
+          style: AppTextStyles.caption,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        VendorWalletCard(
+          entry: e,
+          isMarkingSent: controller.markingVendorSentId == e.id,
+          onMarkSent: e.canMarkAsSent
+              ? () => controller.confirmMarkVendorWalletSent(e)
+              : null,
         ),
         const SizedBox(height: AppSpacing.lg),
         Container(
@@ -137,27 +231,253 @@ class _CommissionDetail extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('حساب العمولة', style: AppTextStyles.h6),
+              Text('الحساب', style: AppTextStyles.h6),
               const SizedBox(height: AppSpacing.md),
-              _CalcRow(label: 'سعر العرض', value: '${c.price} د.ع'),
               _CalcRow(
-                label: 'نسبة التطبيق',
-                value: '${c.commissionPercent}%',
+                label: 'ربح التاجر (amount)',
+                value: '${e.amount} ${e.currency.isEmpty ? 'د.ع' : e.currency}',
+                emphasize: true,
               ),
+              _CalcRow(label: 'سعر الطلب', value: '${e.orderPrice} د.ع'),
+              _CalcRow(label: 'سعر الشحن', value: '${e.shippingPrice} د.ع'),
               _CalcRow(
                 label: 'عمولة التطبيق',
-                value: '${c.appCommission} د.ع',
+                value: '${e.appCommission} د.ع',
               ),
               _CalcRow(
-                label: 'صافي البائع',
-                value: '${c.providerCommission} د.ع',
-                emphasize: true,
+                label: 'نسبة العمولة',
+                value: '${e.commissionPercent}%',
+              ),
+              _CalcRow(
+                label: 'نوع الدفع',
+                value: e.paymentType.isEmpty ? '—' : e.paymentType,
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'التاريخ: ${DateFormatUtils.format(c.createdAt)}',
+                'اكتمال: ${DateFormatUtils.format(e.completedAt)}',
                 style: AppTextStyles.caption,
               ),
+              Text(
+                'إنشاء: ${DateFormatUtils.format(e.createdAt)}',
+                style: AppTextStyles.caption,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _RelationMap(
+          items: [
+            if (e.requestId.trim().isNotEmpty)
+              _RelationItem(
+                title: 'الطلب',
+                subtitle: e.requestId,
+                icon: Icons.assignment_outlined,
+                color: AppColors.info,
+                actionLabel: 'فتح الطلب',
+                onAction: () => DeepLinkNavigation.openRequest(
+                  requestId: e.requestId,
+                ),
+              ),
+            if (e.vendorId.trim().isNotEmpty)
+              _RelationItem(
+                title: 'التاجر',
+                subtitle: e.vendorId,
+                icon: Icons.storefront_outlined,
+                color: AppColors.secondary,
+                actionLabel: 'فتح التاجر',
+                onAction: () => DeepLinkNavigation.openVendor(
+                  vendorId: e.vendorId,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('التفاصيل المرتبطة', style: AppTextStyles.h6),
+              const SizedBox(height: AppSpacing.md),
+              if (e.productName.trim().isNotEmpty)
+                _CalcRow(label: 'المنتج', value: e.productName),
+              if (e.customerName.trim().isNotEmpty)
+                _CalcRow(label: 'العميل', value: e.customerName),
+              if (e.shipmentCompanyName.trim().isNotEmpty)
+                _CalcRow(
+                  label: 'شركة الشحن',
+                  value: e.shipmentCompanyName,
+                ),
+              if (e.orderId.trim().isNotEmpty)
+                _CalcRow(label: 'order_id', value: e.orderId),
+              if (e.paymentTransactionId.trim().isNotEmpty)
+                _CalcRow(
+                  label: 'payment_transaction_id',
+                  value: e.paymentTransactionId,
+                ),
+              if (e.shipmentOfferId.trim().isNotEmpty)
+                _CalcRow(
+                  label: 'shipment_offer_id',
+                  value: e.shipmentOfferId,
+                ),
+              if (e.shipmentCompanyId.trim().isNotEmpty)
+                _CalcRow(
+                  label: 'shipment_company_id',
+                  value: e.shipmentCompanyId,
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ShipmentWalletDetail extends StatelessWidget {
+  const _ShipmentWalletDetail({required this.controller});
+
+  final CommissionsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final e = controller.selectedShipmentWallet!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text('تفاصيل معاملة الشحن', style: AppTextStyles.h4),
+            ),
+            StatusBadge(status: e.status),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          e.isPending
+              ? 'قيد الانتظار — غير محسوبة في الإجمالي'
+              : 'shipments_wallet — تُعرض كل الحالات، ويُحتسب الإجمالي فقط عند status = done',
+          style: AppTextStyles.caption,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        ShipmentWalletCard(
+          entry: e,
+          isMarkingSent: controller.markingShipmentSentId == e.id,
+          onMarkSent: e.isDone
+              ? () => controller.confirmMarkShipmentWalletSent(e)
+              : null,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('بيانات المعاملة', style: AppTextStyles.h6),
+              const SizedBox(height: AppSpacing.md),
+              _CalcRow(
+                label: 'المبلغ (amount)',
+                value: '${e.amount} ${e.currency.isEmpty ? 'د.ع' : e.currency}',
+                emphasize: true,
+              ),
+              _CalcRow(
+                label: 'نوع الدفع',
+                value: e.paymentType.isEmpty ? '—' : e.paymentType,
+              ),
+              _CalcRow(
+                label: 'الحالة',
+                value: e.isPending
+                    ? 'pending — قيد الانتظار'
+                    : (e.status.isEmpty ? '—' : e.status),
+              ),
+              _CalcRow(
+                label: 'اكتمال',
+                value: DateFormatUtils.format(e.completedAt),
+              ),
+              _CalcRow(
+                label: 'إنشاء',
+                value: DateFormatUtils.format(e.createdAt),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _RelationMap(
+          items: [
+            if (e.requestId.trim().isNotEmpty)
+              _RelationItem(
+                title: 'الطلب',
+                subtitle: e.requestId,
+                icon: Icons.assignment_outlined,
+                color: AppColors.info,
+                actionLabel: 'فتح الطلب',
+                onAction: () => DeepLinkNavigation.openRequest(
+                  requestId: e.requestId,
+                ),
+              ),
+            if (e.vendorId.trim().isNotEmpty)
+              _RelationItem(
+                title: 'التاجر',
+                subtitle: e.vendorId,
+                icon: Icons.storefront_outlined,
+                color: AppColors.secondary,
+                actionLabel: 'فتح التاجر',
+                onAction: () => DeepLinkNavigation.openVendor(
+                  vendorId: e.vendorId,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('التفاصيل المرتبطة', style: AppTextStyles.h6),
+              const SizedBox(height: AppSpacing.md),
+              if (e.shipmentCompanyName.trim().isNotEmpty)
+                _CalcRow(
+                  label: 'شركة الشحن',
+                  value: e.shipmentCompanyName,
+                ),
+              if (e.productName.trim().isNotEmpty)
+                _CalcRow(label: 'المنتج', value: e.productName),
+              if (e.customerName.trim().isNotEmpty)
+                _CalcRow(label: 'العميل', value: e.customerName),
+              if (e.orderId.trim().isNotEmpty)
+                _CalcRow(label: 'order_id', value: e.orderId),
+              if (e.paymentTransactionId.trim().isNotEmpty)
+                _CalcRow(
+                  label: 'payment_transaction_id',
+                  value: e.paymentTransactionId,
+                ),
+              if (e.shipmentOfferId.trim().isNotEmpty)
+                _CalcRow(
+                  label: 'shipment_offer_id',
+                  value: e.shipmentOfferId,
+                ),
+              if (e.shipmentCompanyId.trim().isNotEmpty)
+                _CalcRow(
+                  label: 'shipment_company_id',
+                  value: e.shipmentCompanyId,
+                ),
             ],
           ),
         ),
@@ -277,10 +597,7 @@ class _IncentiveDetail extends StatelessWidget {
           ...controller.incentiveLinkedCommissions.map(
             (commission) => Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: ProviderCommissionCard(
-                commission: commission,
-                onTap: () => controller.selectCommission(commission),
-              ),
+              child: ProviderCommissionCard(commission: commission),
             ),
           ),
       ],

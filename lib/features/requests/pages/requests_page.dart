@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/status_label_utils.dart';
 import '../../../shared/widgets/feedback/app_empty_state.dart';
 import '../../../shared/widgets/feedback/app_error_state.dart';
 import '../../../shared/widgets/feedback/app_loader.dart';
@@ -147,23 +148,32 @@ class _RequestsListPane extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _FilterChip(
-                label: 'الكل',
-                selected: controller.statusFilter == 'all',
-                onTap: () => controller.setStatusFilter('all'),
-              ),
-              ...controller.availableStatuses.map(
-                (status) => _FilterChip(
-                  label: status,
-                  selected: controller.statusFilter == status,
-                  onTap: () => controller.setStatusFilter(status),
-                ),
-              ),
-            ],
+        SizedBox(
+          height: 40,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: AppSpacing.xs,
+            ),
+            itemCount: controller.availableStatuses.length + 1,
+            separatorBuilder: (_, _) =>
+                const SizedBox(width: AppSpacing.sm),
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return _FilterChip(
+                  label: StatusLabelUtils.labelAr('all'),
+                  selected: controller.statusFilter == 'all',
+                  onTap: () => controller.setStatusFilter('all'),
+                );
+              }
+
+              final status = controller.availableStatuses[index - 1];
+              return _FilterChip(
+                label: StatusLabelUtils.labelAr(status),
+                selected: controller.statusFilter == status,
+                onTap: () => controller.setStatusFilter(status),
+              );
+            },
           ),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -256,38 +266,27 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(end: AppSpacing.sm),
-      child: Material(
-        color: selected ? AppColors.primary : AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 44, minWidth: 72),
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.md,
-              ),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(
-                  color: selected ? AppColors.primary : AppColors.border,
-                  width: selected ? 1.5 : 1,
-                ),
-              ),
-              child: Text(
-                label,
-                style: AppTextStyles.body2.copyWith(
-                  color: selected
-                      ? AppColors.surface
-                      : AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+    return Material(
+      color: selected ? AppColors.primary : AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.full),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          child: Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: selected ? AppColors.surface : AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ),
