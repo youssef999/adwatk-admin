@@ -36,6 +36,10 @@ migrate_working_dir/
 # Symbolication related
 app.*.symbols
 
+# Firebase Admin / FCM secrets
+**/*firebase-adminsdk*.json
+**/car-parts-marketplace-*-firebase-adminsdk*.json
+
 # Obfuscation related
 app.*.map.json
 

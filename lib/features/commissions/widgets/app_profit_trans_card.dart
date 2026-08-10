@@ -24,7 +24,7 @@ class AppProfitTransCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: selected
             ? AppColors.secondary.withValues(alpha: 0.08)
@@ -41,8 +41,8 @@ class AppProfitTransCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: AppColors.secondary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.md),
@@ -50,7 +50,7 @@ class AppProfitTransCard extends StatelessWidget {
                 child: const Icon(
                   Icons.trending_up,
                   color: AppColors.secondary,
-                  size: AppIconSize.md,
+                  size: AppIconSize.lg,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),

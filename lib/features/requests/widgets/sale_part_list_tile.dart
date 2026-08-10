@@ -34,7 +34,7 @@ class SalePartListTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(
@@ -48,20 +48,21 @@ class SalePartListTile extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.md),
                 child: SizedBox(
-                  width: 64,
-                  height: 64,
+                  width: 88,
+                  height: 88,
                   child: !StorageUrl.isUsable(part.imageUrl)
                       ? Container(
                           color: AppColors.background,
                           child: const Icon(
                             Icons.image_not_supported_outlined,
                             color: AppColors.textDisabled,
+                            size: AppIconSize.lg,
                           ),
                         )
                       : AppNetworkImage(
                           url: part.imageUrl,
                           fit: BoxFit.cover,
-                          memCacheWidth: 128,
+                          memCacheWidth: 176,
                         ),
                 ),
               ),
@@ -75,19 +76,19 @@ class SalePartListTile extends StatelessWidget {
                         Expanded(
                           child: Text(
                             part.partName.isEmpty ? 'بدون اسم' : part.partName,
-                            style: AppTextStyles.h6,
-                            maxLines: 1,
+                            style: AppTextStyles.h5,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         StatusBadge(status: part.status),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.xs),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       '${part.carBrandLabel} · ${part.carType}',
-                      style: AppTextStyles.caption,
-                      maxLines: 1,
+                      style: AppTextStyles.body2,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: AppSpacing.xs),
@@ -98,19 +99,19 @@ class SalePartListTile extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.xs),
+                    const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
                         const Icon(
                           Icons.schedule,
-                          size: AppIconSize.sm,
+                          size: AppIconSize.md,
                           color: AppColors.textDisabled,
                         ),
                         const SizedBox(width: AppSpacing.xs),
                         Expanded(
                           child: Text(
                             DateFormatUtils.format(part.createdAt),
-                            style: AppTextStyles.caption,
+                            style: AppTextStyles.body2,
                           ),
                         ),
                       ],

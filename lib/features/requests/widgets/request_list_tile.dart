@@ -34,7 +34,7 @@ class RequestListTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(
@@ -48,20 +48,21 @@ class RequestListTile extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.md),
                 child: SizedBox(
-                  width: 64,
-                  height: 64,
+                  width: 88,
+                  height: 88,
                   child: !StorageUrl.isUsable(request.imageUrl)
                       ? Container(
                           color: AppColors.background,
                           child: const Icon(
                             Icons.image_not_supported_outlined,
                             color: AppColors.textDisabled,
+                            size: AppIconSize.lg,
                           ),
                         )
                       : AppNetworkImage(
                           url: request.imageUrl,
                           fit: BoxFit.cover,
-                          memCacheWidth: 128,
+                          memCacheWidth: 176,
                         ),
                 ),
               ),
@@ -75,40 +76,40 @@ class RequestListTile extends StatelessWidget {
                         Expanded(
                           child: Text(
                             request.partName.isEmpty ? 'بدون اسم' : request.partName,
-                            style: AppTextStyles.h6,
-                            maxLines: 1,
+                            style: AppTextStyles.h5,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         StatusBadge(status: request.status),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.xs),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       '${request.carBrandLabel} · ${request.carType}',
-                      style: AppTextStyles.caption,
-                      maxLines: 1,
+                      style: AppTextStyles.body2,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: AppSpacing.xs),
+                    const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
                         const Icon(
                           Icons.schedule,
-                          size: AppIconSize.sm,
+                          size: AppIconSize.md,
                           color: AppColors.textDisabled,
                         ),
                         const SizedBox(width: AppSpacing.xs),
                         Expanded(
                           child: Text(
                             DateFormatUtils.format(request.createdAt),
-                            style: AppTextStyles.caption,
+                            style: AppTextStyles.body2,
                           ),
                         ),
                         if (request.hasShipmentOffer)
                           const Icon(
                             Icons.local_shipping_outlined,
-                            size: AppIconSize.sm,
+                            size: AppIconSize.md,
                             color: AppColors.info,
                           ),
                       ],

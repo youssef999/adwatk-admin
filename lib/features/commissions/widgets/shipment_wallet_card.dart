@@ -34,7 +34,7 @@ class ShipmentWalletCard extends StatelessWidget {
         entry.amount < 0 ? AppColors.error : accent;
 
     final card = Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: selected ? accent.withValues(alpha: 0.08) : AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -49,8 +49,8 @@ class ShipmentWalletCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.md),
@@ -58,7 +58,7 @@ class ShipmentWalletCard extends StatelessWidget {
                 child: Icon(
                   Icons.local_shipping_outlined,
                   color: accent,
-                  size: AppIconSize.md,
+                  size: AppIconSize.lg,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
@@ -144,7 +144,7 @@ class ShipmentWalletCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        tappable,
+        Expanded(child: tappable),
         const SizedBox(height: AppSpacing.sm),
         AppButton(
           label: 'تم الإرسال',

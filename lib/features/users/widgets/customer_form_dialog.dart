@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -66,6 +67,21 @@ class CustomerFormDialog extends StatelessWidget {
                       controller: controller.phoneController,
                       hint: '+9647xxxxxxxx',
                       keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      label: 'الحد الأقصى في السالب',
+                      controller: controller.minWalletAlertController,
+                      hint: 'مثال: -50000',
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: true,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[0-9.,\-]'),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(

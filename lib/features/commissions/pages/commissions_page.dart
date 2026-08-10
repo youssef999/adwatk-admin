@@ -13,10 +13,10 @@ import '../../../shared/widgets/layout/app_scaffold.dart';
 import '../controllers/commissions_controller.dart';
 import '../widgets/app_profit_trans_card.dart';
 import '../widgets/app_profits_header.dart';
-import '../widgets/commissions_detail_panel.dart';
-import '../widgets/incentive_request_card.dart';
 import '../widgets/shipment_profits_header.dart';
+import '../widgets/shipment_request_money_card.dart';
 import '../widgets/shipment_wallet_card.dart';
+import '../widgets/vendor_money_request_card.dart';
 import '../widgets/vendor_profits_header.dart';
 import '../widgets/vendor_wallet_card.dart';
 
@@ -40,68 +40,41 @@ class CommissionsPage extends StatelessWidget {
         ),
         const SizedBox(width: AppSpacing.sm),
       ],
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = !Breakpoints.isMobile(constraints.maxWidth);
+      body: GetBuilder<CommissionsController>(
+        id: CommissionsController.listId,
+        builder: (controller) {
+          if (controller.isLoading &&
+              controller.appProfitTrans.isEmpty &&
+              controller.vendorWallet.isEmpty &&
+              controller.shipmentWallet.isEmpty &&
+              controller.shipmentMoneyRequests.isEmpty &&
+              controller.vendorMoneyRequests.isEmpty &&
+              controller.appCommissionSettings == null) {
+            return const AppLoader(message: 'جاري تحميل العمولات...');
+          }
 
-          return GetBuilder<CommissionsController>(
-            id: CommissionsController.listId,
-            builder: (controller) {
-              if (controller.isLoading &&
-                  controller.appProfitTrans.isEmpty &&
-                  controller.vendorWallet.isEmpty &&
-                  controller.shipmentWallet.isEmpty &&
-                  controller.incentives.isEmpty &&
-                  controller.appCommissionSettings == null) {
-                return const AppLoader(message: 'جاري تحميل العمولات...');
-              }
+          if (controller.errorMessage != null &&
+              controller.appProfitTrans.isEmpty &&
+              controller.vendorWallet.isEmpty &&
+              controller.shipmentWallet.isEmpty &&
+              controller.shipmentMoneyRequests.isEmpty &&
+              controller.vendorMoneyRequests.isEmpty) {
+            return AppErrorState(
+              message: controller.errorMessage!,
+              onRetry: controller.loadAll,
+            );
+          }
 
-              if (controller.errorMessage != null &&
-                  controller.appProfitTrans.isEmpty &&
-                  controller.vendorWallet.isEmpty &&
-                  controller.shipmentWallet.isEmpty &&
-                  controller.incentives.isEmpty) {
-                return AppErrorState(
-                  message: controller.errorMessage!,
-                  onRetry: controller.loadAll,
-                );
-              }
-
-              if (!isWide &&
-                  (controller.selectedProfitTrans != null ||
-                      controller.selectedVendorWallet != null ||
-                      controller.selectedShipmentWallet != null ||
-                      controller.selectedIncentive != null)) {
-                return const CommissionsDetailPanel(showBack: true);
-              }
-
-              final listPane = _ListPane(controller: controller);
-
-              if (!isWide) return listPane;
-
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    width: constraints.maxWidth < Breakpoints.tablet
-                        ? 360
-                        : 420,
-                    child: listPane,
-                  ),
-                  const SizedBox(width: AppSpacing.lg),
-                  const Expanded(child: CommissionsDetailPanel()),
-                ],
-              );
-            },
-          );
+          // Not const: must rebuild when GetBuilder(listId) updates (tabs/search).
+          return _CommissionsFullWidthBody(controller: controller);
         },
       ),
     );
   }
 }
 
-class _ListPane extends StatelessWidget {
-  const _ListPane({required this.controller});
+class _CommissionsFullWidthBody extends StatelessWidget {
+  const _CommissionsFullWidthBody({required this.controller});
 
   final CommissionsController controller;
 
@@ -152,8 +125,10 @@ class _ListPane extends StatelessWidget {
                 'بحث بالمنتج أو التاجر أو الطلب أو الحالة...',
               CommissionsTab.shipmentWallet =>
                 'بحث بشركة الشحن أو المنتج أو الطلب أو الحالة...',
-              CommissionsTab.incentives =>
-                'بحث بالمحل أو الحالة أو workerId...',
+              CommissionsTab.shipmentMoneyRequests =>
+                'بحث بالإيميل أو الهاتف أو الحالة أو المعاملة...',
+              CommissionsTab.vendorMoneyRequests =>
+                'بحث بالمحل أو الهاتف أو طريقة الدفع أو الحالة...',
             },
             hintStyle: AppTextStyles.body2,
             prefixIcon: const Icon(Icons.search),
@@ -162,60 +137,52 @@ class _ListPane extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _TabChip(
-                    label: 'أرباح التطبيق',
-                    count: controller.profitTransactions.length,
-                    selected:
-                        controller.activeTab == CommissionsTab.profits,
-                    onTap: () =>
-                        controller.setTab(CommissionsTab.profits),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _TabChip(
-                    label: 'أرباح التجار',
-                    count: controller.filteredVendorWallet.length,
-                    selected: controller.activeTab ==
-                        CommissionsTab.vendorWallet,
-                    onTap: () =>
-                        controller.setTab(CommissionsTab.vendorWallet),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Expanded(
-                  child: _TabChip(
-                    label: 'شركات الشحن',
-                    count: controller.filteredShipmentWallet.length,
-                    selected: controller.activeTab ==
-                        CommissionsTab.shipmentWallet,
-                    onTap: () =>
-                        controller.setTab(CommissionsTab.shipmentWallet),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _TabChip(
-                    label: 'طلبات الحوافز',
-                    count: controller.filteredIncentives.length,
-                    selected: controller.activeTab ==
-                        CommissionsTab.incentives,
-                    onTap: () =>
-                        controller.setTab(CommissionsTab.incentives),
-                  ),
-                ),
-              ],
-            ),
-          ],
+        SizedBox(
+          height: 72,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _TabChip(
+                label: 'أرباح التطبيق',
+                count: controller.profitTransactions.length,
+                selected: controller.activeTab == CommissionsTab.profits,
+                onTap: () => controller.setTab(CommissionsTab.profits),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _TabChip(
+                label: 'أرباح التجار',
+                count: controller.filteredVendorWallet.length,
+                selected: controller.activeTab == CommissionsTab.vendorWallet,
+                onTap: () => controller.setTab(CommissionsTab.vendorWallet),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _TabChip(
+                label: 'شركات الشحن',
+                count: controller.filteredShipmentWallet.length,
+                selected:
+                    controller.activeTab == CommissionsTab.shipmentWallet,
+                onTap: () => controller.setTab(CommissionsTab.shipmentWallet),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _TabChip(
+                label: 'طلبات سحب الشحن',
+                count: controller.filteredShipmentMoneyRequests.length,
+                selected: controller.activeTab ==
+                    CommissionsTab.shipmentMoneyRequests,
+                onTap: () =>
+                    controller.setTab(CommissionsTab.shipmentMoneyRequests),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _TabChip(
+                label: 'طلبات سحب التجار',
+                count: controller.filteredVendorMoneyRequests.length,
+                selected: controller.activeTab ==
+                    CommissionsTab.vendorMoneyRequests,
+                onTap: () =>
+                    controller.setTab(CommissionsTab.vendorMoneyRequests),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: AppSpacing.md),
         Expanded(
@@ -225,8 +192,10 @@ class _ListPane extends StatelessWidget {
               _VendorWalletList(controller: controller),
             CommissionsTab.shipmentWallet =>
               _ShipmentWalletList(controller: controller),
-            CommissionsTab.incentives =>
-              _IncentivesList(controller: controller),
+            CommissionsTab.shipmentMoneyRequests =>
+              _ShipmentMoneyRequestsList(controller: controller),
+            CommissionsTab.vendorMoneyRequests =>
+              _VendorMoneyRequestsList(controller: controller),
           },
         ),
       ],
@@ -256,9 +225,9 @@ class _TabChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: Container(
-          width: double.infinity,
+          constraints: const BoxConstraints(minWidth: 140),
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
+            horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
@@ -268,6 +237,7 @@ class _TabChip extends StatelessWidget {
             ),
           ),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 label,
@@ -296,6 +266,12 @@ class _TabChip extends StatelessWidget {
   }
 }
 
+int _gridColumns(double width) {
+  if (width >= Breakpoints.tablet) return 3;
+  if (width >= Breakpoints.mobile) return 2;
+  return 1;
+}
+
 class _ProfitsList extends StatelessWidget {
   const _ProfitsList({required this.controller});
 
@@ -305,31 +281,44 @@ class _ProfitsList extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = controller.profitTransactions;
 
-    return ListView.separated(
-      itemCount: items.isEmpty ? 2 : items.length + 1,
-      separatorBuilder: (context, index) =>
-          const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return const AppProfitsHeader();
-        }
-
-        if (items.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.only(top: AppSpacing.lg),
-            child: AppEmptyState(
-              title: 'لا أرباح في هذه الفترة',
-              subtitle: 'جرّب فلتر يوم / أسبوع / شهر / سنة آخر',
-              icon: Icons.trending_up,
-            ),
-          );
-        }
-
-        final item = items[index - 1];
-        return AppProfitTransCard(
-          transaction: item,
-          selected: controller.selectedProfitTrans?.id == item.id,
-          onTap: () => controller.selectProfitTrans(item),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = _gridColumns(constraints.maxWidth);
+        return CustomScrollView(
+          slivers: [
+            const SliverToBoxAdapter(child: AppProfitsHeader()),
+            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
+            if (items.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: AppEmptyState(
+                  title: 'لا أرباح في هذه الفترة',
+                  subtitle: 'جرّب فلتر يوم / أسبوع / شهر / سنة آخر',
+                  icon: Icons.trending_up,
+                ),
+              )
+            else
+              SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
+                  mainAxisSpacing: AppSpacing.md,
+                  crossAxisSpacing: AppSpacing.md,
+                  mainAxisExtent: 210,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final item = items[index];
+                    return AppProfitTransCard(
+                      transaction: item,
+                      selected:
+                          controller.selectedProfitTrans?.id == item.id,
+                      onTap: () => controller.selectProfitTrans(item),
+                    );
+                  },
+                  childCount: items.length,
+                ),
+              ),
+          ],
         );
       },
     );
@@ -345,35 +334,50 @@ class _VendorWalletList extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = controller.filteredVendorWallet;
 
-    return ListView.separated(
-      itemCount: items.isEmpty ? 2 : items.length + 1,
-      separatorBuilder: (context, index) =>
-          const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return const VendorProfitsHeader();
-        }
-
-        if (items.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.only(top: AppSpacing.lg),
-            child: AppEmptyState(
-              title: 'لا أرباح تجار في هذه الفترة',
-              subtitle: 'ستظهر معاملات vendors_wallet هنا',
-              icon: Icons.account_balance_wallet_outlined,
-            ),
-          );
-        }
-
-        final item = items[index - 1];
-        return VendorWalletCard(
-          entry: item,
-          selected: controller.selectedVendorWallet?.id == item.id,
-          isMarkingSent: controller.markingVendorSentId == item.id,
-          onTap: () => controller.selectVendorWallet(item),
-          onMarkSent: item.canMarkAsSent
-              ? () => controller.confirmMarkVendorWalletSent(item)
-              : null,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = _gridColumns(constraints.maxWidth);
+        return CustomScrollView(
+          slivers: [
+            const SliverToBoxAdapter(child: VendorProfitsHeader()),
+            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
+            if (items.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: AppEmptyState(
+                  title: 'لا أرباح تجار في هذه الفترة',
+                  subtitle: 'ستظهر معاملات vendors_wallet هنا',
+                  icon: Icons.account_balance_wallet_outlined,
+                ),
+              )
+            else
+              SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
+                  mainAxisSpacing: AppSpacing.md,
+                  crossAxisSpacing: AppSpacing.md,
+                  mainAxisExtent: 300,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final item = items[index];
+                    return VendorWalletCard(
+                      entry: item,
+                      selected:
+                          controller.selectedVendorWallet?.id == item.id,
+                      isMarkingSent:
+                          controller.markingVendorSentId == item.id,
+                      onTap: () => controller.selectVendorWallet(item),
+                      onMarkSent: item.canMarkAsSent
+                          ? () =>
+                              controller.confirmMarkVendorWalletSent(item)
+                          : null,
+                    );
+                  },
+                  childCount: items.length,
+                ),
+              ),
+          ],
         );
       },
     );
@@ -389,56 +393,71 @@ class _ShipmentWalletList extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = controller.filteredShipmentWallet;
 
-    return ListView.separated(
-      itemCount: items.isEmpty ? 2 : items.length + 1,
-      separatorBuilder: (context, index) =>
-          const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return const ShipmentProfitsHeader();
-        }
-
-        if (items.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.only(top: AppSpacing.lg),
-            child: AppEmptyState(
-              title: 'لا معاملات شحن في هذه الفترة',
-              subtitle: 'ستظهر معاملات shipments_wallet هنا',
-              icon: Icons.local_shipping_outlined,
-            ),
-          );
-        }
-
-        final item = items[index - 1];
-        return ShipmentWalletCard(
-          entry: item,
-          selected: controller.selectedShipmentWallet?.id == item.id,
-          isMarkingSent: controller.markingShipmentSentId == item.id,
-          onTap: () => controller.selectShipmentWallet(item),
-          onMarkSent: item.isDone
-              ? () => controller.confirmMarkShipmentWalletSent(item)
-              : null,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = _gridColumns(constraints.maxWidth);
+        return CustomScrollView(
+          slivers: [
+            const SliverToBoxAdapter(child: ShipmentProfitsHeader()),
+            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
+            if (items.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: AppEmptyState(
+                  title: 'لا معاملات شحن في هذه الفترة',
+                  subtitle: 'ستظهر معاملات shipments_wallet هنا',
+                  icon: Icons.local_shipping_outlined,
+                ),
+              )
+            else
+              SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
+                  mainAxisSpacing: AppSpacing.md,
+                  crossAxisSpacing: AppSpacing.md,
+                  mainAxisExtent: 300,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final item = items[index];
+                    return ShipmentWalletCard(
+                      entry: item,
+                      selected:
+                          controller.selectedShipmentWallet?.id == item.id,
+                      isMarkingSent:
+                          controller.markingShipmentSentId == item.id,
+                      onTap: () => controller.selectShipmentWallet(item),
+                      onMarkSent: item.isDone
+                          ? () => controller
+                              .confirmMarkShipmentWalletSent(item)
+                          : null,
+                    );
+                  },
+                  childCount: items.length,
+                ),
+              ),
+          ],
         );
       },
     );
   }
 }
 
-class _IncentivesList extends StatelessWidget {
-  const _IncentivesList({required this.controller});
+class _ShipmentMoneyRequestsList extends StatelessWidget {
+  const _ShipmentMoneyRequestsList({required this.controller});
 
   final CommissionsController controller;
 
   @override
   Widget build(BuildContext context) {
-    if (controller.incentives.isEmpty) {
+    if (controller.shipmentMoneyRequests.isEmpty) {
       return const AppEmptyState(
-        title: 'لا توجد طلبات حوافز',
-        subtitle: 'طلبات incentive_requests ستظهر هنا',
-        icon: Icons.card_giftcard_outlined,
+        title: 'لا توجد طلبات سحب',
+        subtitle: 'طلبات shipment_request_money ستظهر هنا',
+        icon: Icons.request_page_outlined,
       );
     }
-    if (controller.filteredIncentives.isEmpty) {
+    if (controller.filteredShipmentMoneyRequests.isEmpty) {
       return const AppEmptyState(
         title: 'لا نتائج',
         subtitle: 'عدّل كلمات البحث',
@@ -446,16 +465,96 @@ class _IncentivesList extends StatelessWidget {
       );
     }
 
-    return ListView.separated(
-      itemCount: controller.filteredIncentives.length,
-      separatorBuilder: (context, index) =>
-          const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, index) {
-        final item = controller.filteredIncentives[index];
-        return IncentiveRequestCard(
-          incentive: item,
-          selected: controller.selectedIncentive?.id == item.id,
-          onTap: () => controller.selectIncentive(item),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = _gridColumns(constraints.maxWidth);
+        final items = controller.filteredShipmentMoneyRequests;
+        return GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cols,
+            mainAxisSpacing: AppSpacing.md,
+            crossAxisSpacing: AppSpacing.md,
+            mainAxisExtent: 240,
+          ),
+          itemCount: items.length,
+          itemBuilder: (context, index) {
+            final item = items[index];
+            return ShipmentRequestMoneyCard(
+              request: item,
+              selected:
+                  controller.selectedShipmentMoneyRequest?.id == item.id,
+              isActing:
+                  controller.actingShipmentMoneyRequestId == item.id,
+              onTap: () => controller.selectShipmentMoneyRequest(item),
+              onApprove: item.isPending
+                  ? () =>
+                      controller.confirmApproveShipmentMoneyRequest(item)
+                  : null,
+              onReject: item.isPending
+                  ? () =>
+                      controller.confirmRejectShipmentMoneyRequest(item)
+                  : null,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _VendorMoneyRequestsList extends StatelessWidget {
+  const _VendorMoneyRequestsList({required this.controller});
+
+  final CommissionsController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.vendorMoneyRequests.isEmpty) {
+      return const AppEmptyState(
+        title: 'لا توجد طلبات سحب تجار',
+        subtitle: 'طلبات money_requests ستظهر هنا',
+        icon: Icons.storefront_outlined,
+      );
+    }
+    if (controller.filteredVendorMoneyRequests.isEmpty) {
+      return const AppEmptyState(
+        title: 'لا نتائج',
+        subtitle: 'عدّل كلمات البحث',
+        icon: Icons.search_off,
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = _gridColumns(constraints.maxWidth);
+        final items = controller.filteredVendorMoneyRequests;
+        return GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cols,
+            mainAxisSpacing: AppSpacing.md,
+            crossAxisSpacing: AppSpacing.md,
+            mainAxisExtent: 260,
+          ),
+          itemCount: items.length,
+          itemBuilder: (context, index) {
+            final item = items[index];
+            return VendorMoneyRequestCard(
+              request: item,
+              selected:
+                  controller.selectedVendorMoneyRequest?.id == item.id,
+              isActing:
+                  controller.actingVendorMoneyRequestId == item.id,
+              onTap: () => controller.selectVendorMoneyRequest(item),
+              onApprove: item.isPending
+                  ? () =>
+                      controller.confirmApproveVendorMoneyRequest(item)
+                  : null,
+              onReject: item.isPending
+                  ? () =>
+                      controller.confirmRejectVendorMoneyRequest(item)
+                  : null,
+            );
+          },
         );
       },
     );

@@ -5,6 +5,7 @@ import '../../../core/constants/user_roles.dart';
 import '../../vendors/models/vendor_model.dart';
 import '../models/customer_model.dart';
 import '../models/phone_lookup_model.dart';
+import '../models/user_wallet_model.dart';
 
 class UsersRepository {
   UsersRepository({FirebaseFirestore? firestore})
@@ -17,6 +18,303 @@ class UsersRepository {
 
   CollectionReference<Map<String, dynamic>> get _phoneLookup =>
       _firestore.collection(FirestoreCollections.phoneLookup);
+
+  CollectionReference<Map<String, dynamic>> get _userMinWalletAlert =>
+      _firestore.collection(FirestoreCollections.userMinWalletAlert);
+
+  CollectionReference<Map<String, dynamic>> get _providerMinWalletAllert =>
+      _firestore.collection(FirestoreCollections.providerMinWalletAllert);
+
+  CollectionReference<Map<String, dynamic>> get _userWallet =>
+      _firestore.collection(FirestoreCollections.userWallet);
+
+  Future<List<UserWalletModel>> fetchUserWallets() async {
+    final snapshot = await _userWallet.get();
+    return snapshot.docs.map(UserWalletModel.fromFirestore).toList();
+  }
+
+  Future<DocumentReference<Map<String, dynamic>>> _resolveUserWalletRef({
+    required String userId,
+    required String userEmail,
+  }) async {
+    final id = userId.trim();
+    final byDoc = _userWallet.doc(id);
+    final byDocSnap = await byDoc.get();
+    if (byDocSnap.exists) return byDoc;
+
+    final byId = await _userWallet
+        .where('user_id', isEqualTo: id)
+        .limit(1)
+        .get();
+    if (byId.docs.isNotEmpty) return byId.docs.first.reference;
+
+    final email = userEmail.trim();
+    if (email.isNotEmpty) {
+      final byEmail = await _userWallet
+          .where('user_email', isEqualTo: email)
+          .limit(1)
+          .get();
+      if (byEmail.docs.isNotEmpty) return byEmail.docs.first.reference;
+    }
+
+    return byDoc;
+  }
+
+  /// [delta] > 0 adds, [delta] < 0 subtracts. Uses `user_wallet/{userId}`.
+  Future<UserWalletModel> adjustUserWallet({
+    required String userId,
+    required String userEmail,
+    required num delta,
+  }) async {
+    final id = userId.trim();
+    final email = userEmail.trim();
+    if (id.isEmpty || email.isEmpty) {
+      throw ArgumentError('userId and userEmail are required');
+    }
+    if (delta == 0) {
+      throw ArgumentError('delta must not be zero');
+    }
+
+    final storedDelta = delta % 1 == 0 ? delta.toInt() : delta;
+    final ref = await _resolveUserWalletRef(userId: id, userEmail: email);
+
+    await _firestore.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists) {
+        tx.set(ref, {
+          'amount': storedDelta,
+          'created_at': FieldValue.serverTimestamp(),
+          'user_email': email,
+          'user_id': id,
+        });
+        return;
+      }
+      final current = _parseNumericValue(snap.data()?['amount']) ?? 0;
+      final next = current + storedDelta;
+      final storedNext = next % 1 == 0 ? next.toInt() : next;
+      tx.update(ref, {
+        'amount': storedNext,
+        'user_email': email,
+        'user_id': id,
+      });
+    });
+
+    final updated = await ref.get();
+    return UserWalletModel.fromFirestore(updated);
+  }
+
+  CollectionReference<Map<String, dynamic>> get _vendorsWallet =>
+      _firestore.collection(FirestoreCollections.vendorsWallet);
+
+  /// Sum of `vendors_wallet.amount` where `status == done`, keyed by `vendor_id`.
+  Future<Map<String, num>> fetchVendorWalletBalances() async {
+    final snapshot = await _vendorsWallet.get();
+    final totals = <String, num>{};
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final status = (data['status'] as String?)?.trim().toLowerCase() ?? '';
+      if (status != 'done') continue;
+      final vendorId = (data['vendor_id'] as String?)?.trim() ?? '';
+      if (vendorId.isEmpty) continue;
+      totals[vendorId] = (totals[vendorId] ?? 0) + (data['amount'] as num? ?? 0);
+    }
+    return totals;
+  }
+
+  Future<void> adjustVendorWalletBalance({
+    required String vendorId,
+    required num delta,
+  }) async {
+    final id = vendorId.trim();
+    if (id.isEmpty || delta == 0) return;
+    final amount = delta % 1 == 0 ? delta.toInt() : delta;
+    await _vendorsWallet.add({
+      'amount': amount,
+      'status': 'done',
+      'vendor_id': id,
+      'currency': 'IQD',
+      'product_name': 'تعديل إداري',
+      'customer_name': 'admin',
+      'customer_id': '',
+      'order_id': '',
+      'request_id': '',
+      'payment_type': 'admin_adjustment',
+      'payment_transaction_id': '',
+      'product_id': '',
+      'shipment_company_id': '',
+      'shipment_company_name': '',
+      'shipment_offer_id': '',
+      'shipping_price': 0,
+      'order_price': 0,
+      'app_commission': 0,
+      'commission_percent': 0,
+      'created_at': FieldValue.serverTimestamp(),
+      'completedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Maps provider id → alert value from `provider_min_wallet_allert`.
+  Future<Map<String, num>> fetchAllProviderMinWalletAlerts() async {
+    final snapshot = await _providerMinWalletAllert.get();
+    final byId = <String, num>{};
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final value = _parseNumericValue(data['value']);
+      if (value == null) continue;
+      final id = (data['id'] as String?)?.trim() ?? '';
+      if (id.isNotEmpty) byId[id] = value;
+      // Doc id may also be the provider uid (app creates with doc(providerId)).
+      if (doc.id.trim().isNotEmpty) byId[doc.id.trim()] = value;
+    }
+    return byId;
+  }
+
+  Future<Map<String, num>> fetchAllUserMinWalletAlerts() async {
+    final snapshot = await _userMinWalletAlert.get();
+    final byEmail = <String, num>{};
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final email = (data['user_email'] as String?)?.trim().toLowerCase() ?? '';
+      final value = _parseNumericValue(data['value']);
+      if (email.isEmpty || value == null) continue;
+      byEmail[email] = value;
+    }
+    return byEmail;
+  }
+
+  Future<num?> fetchMinWalletAlert(String userEmail) async {
+    final email = userEmail.trim();
+    if (email.isEmpty) return null;
+
+    final exact = await _userMinWalletAlert
+        .where('user_email', isEqualTo: email)
+        .limit(1)
+        .get();
+    if (exact.docs.isNotEmpty) {
+      return _parseNumericValue(exact.docs.first.data()['value']);
+    }
+
+    final lower = email.toLowerCase();
+    if (lower != email) {
+      final lowerSnap = await _userMinWalletAlert
+          .where('user_email', isEqualTo: lower)
+          .limit(1)
+          .get();
+      if (lowerSnap.docs.isNotEmpty) {
+        return _parseNumericValue(lowerSnap.docs.first.data()['value']);
+      }
+    }
+
+    final all = await fetchAllUserMinWalletAlerts();
+    return all[lower];
+  }
+
+  Future<void> upsertMinWalletAlert({
+    required String userEmail,
+    required num value,
+  }) async {
+    final email = userEmail.trim().toLowerCase();
+    if (email.isEmpty) return;
+    final storedValue = value % 1 == 0 ? value.toInt() : value;
+
+    final exact = await _userMinWalletAlert
+        .where('user_email', isEqualTo: email)
+        .limit(1)
+        .get();
+    if (exact.docs.isNotEmpty) {
+      await exact.docs.first.reference.update({
+        'user_email': email,
+        'value': storedValue,
+      });
+      return;
+    }
+
+    // Update legacy docs that stored mixed-case emails.
+    final snapshot = await _userMinWalletAlert.get();
+    for (final doc in snapshot.docs) {
+      final existing =
+          (doc.data()['user_email'] as String?)?.trim().toLowerCase() ?? '';
+      if (existing == email) {
+        await doc.reference.update({
+          'user_email': email,
+          'value': storedValue,
+        });
+        return;
+      }
+    }
+
+    await _userMinWalletAlert.add({
+      'user_email': email,
+      'value': storedValue,
+    });
+  }
+
+  num? _parseNumericValue(dynamic raw) {
+    if (raw is num) return raw;
+    if (raw is String) return num.tryParse(raw.replaceAll(',', '.'));
+    return null;
+  }
+
+  Future<num?> fetchProviderMinWalletAlert({
+    required String providerId,
+    String? email,
+  }) async {
+    final id = providerId.trim();
+    if (id.isNotEmpty) {
+      final byId = await _providerMinWalletAllert
+          .where('id', isEqualTo: id)
+          .limit(1)
+          .get();
+      if (byId.docs.isNotEmpty) {
+        return _parseNumericValue(byId.docs.first.data()['value']);
+      }
+    }
+
+    final trimmedEmail = email?.trim() ?? '';
+    if (trimmedEmail.isEmpty) return null;
+    final byEmail = await _providerMinWalletAllert
+        .where('email', isEqualTo: trimmedEmail)
+        .limit(1)
+        .get();
+    if (byEmail.docs.isEmpty) return null;
+    return _parseNumericValue(byEmail.docs.first.data()['value']);
+  }
+
+  Future<void> upsertProviderMinWalletAlert({
+    required String providerId,
+    required String email,
+    required num value,
+  }) async {
+    final id = providerId.trim();
+    final trimmedEmail = email.trim();
+    if (id.isEmpty || trimmedEmail.isEmpty) return;
+
+    final payload = {
+      'email': trimmedEmail,
+      'id': id,
+      'value': value.toDouble(),
+    };
+
+    final byId = await _providerMinWalletAllert
+        .where('id', isEqualTo: id)
+        .limit(1)
+        .get();
+    if (byId.docs.isNotEmpty) {
+      await byId.docs.first.reference.update(payload);
+      return;
+    }
+
+    final byEmail = await _providerMinWalletAllert
+        .where('email', isEqualTo: trimmedEmail)
+        .limit(1)
+        .get();
+    if (byEmail.docs.isNotEmpty) {
+      await byEmail.docs.first.reference.update(payload);
+      return;
+    }
+
+    await _providerMinWalletAllert.add(payload);
+  }
 
   Future<List<CustomerModel>> fetchCustomers() async {
     try {

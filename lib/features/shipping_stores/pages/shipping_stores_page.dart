@@ -11,6 +11,7 @@ import '../../../shared/widgets/feedback/app_error_state.dart';
 import '../../../shared/widgets/feedback/app_loader.dart';
 import '../../../shared/widgets/layout/app_scaffold.dart';
 import '../controllers/shipping_stores_controller.dart';
+import '../widgets/delivery_fee_card.dart';
 import '../widgets/shipping_store_form_dialog.dart';
 import '../widgets/shipping_stores_table.dart';
 
@@ -48,6 +49,8 @@ class ShippingStoresPage extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const DeliveryFeeCard(),
+              const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: controller.searchController,
                 onChanged: controller.onSearchChanged,

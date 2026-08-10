@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../core/constants/user_roles.dart';
-import '../../../core/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_radius.dart';
@@ -11,6 +10,7 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/cards/app_card.dart';
 import '../controllers/vendors_controller.dart';
 import '../models/vendor_model.dart';
+import 'vendor_finance_dialog.dart';
 import 'vendor_form_dialog.dart';
 
 class VendorListItem extends StatelessWidget {
@@ -24,6 +24,8 @@ class VendorListItem extends StatelessWidget {
     final roleColor = vendor.role == UserRoles.testWorker
         ? AppColors.warning
         : AppColors.success;
+    final balance = controller.walletAmountFor(vendor);
+    final minAlert = controller.minWalletAlertFor(vendor);
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -54,6 +56,30 @@ class VendorListItem extends StatelessWidget {
                     Text(vendor.phoneNumber, style: AppTextStyles.caption),
                     const SizedBox(height: AppSpacing.xs),
                     Text(vendor.address, style: AppTextStyles.caption),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'المحفظة: ${_formatAmount(balance)}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: balance < 0
+                            ? AppColors.error
+                            : AppColors.success,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      minAlert == null
+                          ? 'الحد الأقصى في السالب: —'
+                          : minAlert == 0
+                              ? 'الرصيد السالب: مقيد (حد = 0)'
+                              : 'الحد الأقصى في السالب: ${_formatAmount(minAlert)}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: minAlert == 0
+                            ? AppColors.error
+                            : AppColors.warning,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -75,13 +101,22 @@ class VendorListItem extends StatelessWidget {
                 ),
               ),
               IconButton(
-                tooltip: 'العمولات والحوافز',
-                onPressed: () => Get.toNamed(
-                  AppRoutes.commissions,
-                  arguments: {'workerId': vendor.uid},
+                tooltip: 'إرسال إشعار',
+                onPressed: () => controller.openSendNotification(vendor),
+                icon: const Icon(
+                  Icons.notifications_active_outlined,
+                  size: AppIconSize.md,
                 ),
-                icon: const Icon(Icons.payments_outlined, size: AppIconSize.md),
                 color: AppColors.primary,
+              ),
+              IconButton(
+                tooltip: 'المحفظة والحد الأقصى',
+                onPressed: () => _openFinance(controller),
+                icon: const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  size: AppIconSize.md,
+                ),
+                color: AppColors.success,
               ),
               IconButton(
                 tooltip: 'تعديل',
@@ -130,8 +165,21 @@ class VendorListItem extends StatelessWidget {
     );
   }
 
+  String _formatAmount(num value) {
+    final text = value % 1 == 0 ? value.toInt().toString() : value.toString();
+    return '$text د.ع';
+  }
+
+  Future<void> _openFinance(VendorsController controller) async {
+    controller.prepareFinance(vendor);
+    await Get.dialog<bool>(
+      const VendorFinanceDialog(),
+      barrierDismissible: false,
+    );
+  }
+
   Future<void> _openEdit(VendorsController controller) async {
-    controller.prepareEdit(vendor);
+    await controller.prepareEdit(vendor);
     await Get.dialog<bool>(
       const VendorFormDialog(),
       barrierDismissible: false,

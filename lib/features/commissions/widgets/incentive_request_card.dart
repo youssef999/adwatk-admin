@@ -23,7 +23,7 @@ class IncentiveRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: selected
             ? AppColors.success.withValues(alpha: 0.08)

@@ -74,6 +74,21 @@ class VendorFormDialog extends StatelessWidget {
                           ),
                           const SizedBox(height: AppSpacing.md),
                           AppTextField(
+                            label: 'الحد الأقصى في السالب',
+                            controller: controller.minWalletAlertController,
+                            hint: 'مثال: 50000',
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                              signed: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.,\-]'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          AppTextField(
                             label: 'العنوان',
                             controller: controller.addressController,
                             hint: 'المدينة / المنطقة',

@@ -11,11 +11,21 @@ class FirestoreCollections {
   static const String shippimentStores = 'shippiment_stores';
   static const String providerCommission = 'provider_commission';
   static const String incentiveRequests = 'incentive_requests';
+  static const String moneyRequests = 'money_requests';
   static const String appCommission = 'app_commission';
   /// Exact Firestore spelling — app profit ledger transactions.
   static const String appProfitsTrans = 'app_profits_trans';
   static const String vendorsWallet = 'vendors_wallet';
   static const String shipmentsWallet = 'shipments_wallet';
+  static const String shipmentRequestMoney = 'shipment_request_money';
   static const String phoneLookup = 'phone_lookup';
   static const String saleParts = 'sale_parts';
+  static const String userMinWalletAlert = 'user_min_wallet_alert';
+  /// Exact Firestore spelling (typo preserved intentionally).
+  static const String providerMinWalletAllert = 'provider_min_wallet_allert';
+  static const String shipmentMinWalletAlert = 'shipment_min_wallet_alert';
+  static const String userWallet = 'user_wallet';
+  static const String deliveryFee = 'delivery_fee';
+  static const String paymentTransactions = 'payment_transactions';
+  static const String notifications = 'notifications';
 }

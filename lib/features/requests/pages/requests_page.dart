@@ -78,8 +78,8 @@ class RequestsPage extends StatelessWidget {
                 children: [
                   SizedBox(
                     width: constraints.maxWidth < Breakpoints.tablet
-                        ? 320
-                        : 380,
+                        ? 420
+                        : 540,
                     child: listPane,
                   ),
                   const SizedBox(width: AppSpacing.lg),

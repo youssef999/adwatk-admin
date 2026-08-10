@@ -10,6 +10,7 @@ import '../../../shared/widgets/cards/app_card.dart';
 import '../controllers/users_controller.dart';
 import '../models/customer_model.dart';
 import 'customer_form_dialog.dart';
+import 'user_wallet_dialog.dart';
 
 class CustomerListItem extends StatelessWidget {
   const CustomerListItem({super.key, required this.customer});
@@ -19,6 +20,8 @@ class CustomerListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<UsersController>();
+    final walletAmount = controller.walletAmountFor(customer);
+    final minAlert = controller.minWalletAlertFor(customer);
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -56,6 +59,30 @@ class CustomerListItem extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'المحفظة: ${_formatAmount(walletAmount)}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: walletAmount < 0
+                        ? AppColors.error
+                        : AppColors.success,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  minAlert == null
+                      ? 'الحد الأقصى في السالب: —'
+                      : minAlert == 0
+                          ? 'الرصيد السالب: مقيد (حد = 0)'
+                          : 'الحد الأقصى في السالب: ${_formatAmount(minAlert)}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: minAlert == 0
+                        ? AppColors.error
+                        : AppColors.warning,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -85,6 +112,24 @@ class CustomerListItem extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           IconButton(
+            tooltip: 'إرسال إشعار',
+            onPressed: () => controller.openSendNotification(customer),
+            icon: const Icon(
+              Icons.notifications_active_outlined,
+              size: AppIconSize.md,
+            ),
+            color: AppColors.primary,
+          ),
+          IconButton(
+            tooltip: 'المحفظة والحد الأقصى',
+            onPressed: () => _openWallet(controller),
+            icon: const Icon(
+              Icons.account_balance_wallet_outlined,
+              size: AppIconSize.md,
+            ),
+            color: AppColors.success,
+          ),
+          IconButton(
             tooltip: 'تعديل',
             onPressed: () => _openEdit(controller),
             icon: const Icon(Icons.edit_outlined, size: AppIconSize.md),
@@ -101,8 +146,21 @@ class CustomerListItem extends StatelessWidget {
     );
   }
 
+  String _formatAmount(num value) {
+    final text = value % 1 == 0 ? value.toInt().toString() : value.toString();
+    return '$text د.ع';
+  }
+
+  Future<void> _openWallet(UsersController controller) async {
+    controller.prepareWalletAdjust(customer);
+    await Get.dialog<bool>(
+      const UserWalletDialog(),
+      barrierDismissible: false,
+    );
+  }
+
   Future<void> _openEdit(UsersController controller) async {
-    controller.prepareEdit(customer);
+    await controller.prepareEdit(customer);
     await Get.dialog<bool>(
       const CustomerFormDialog(),
       barrierDismissible: false,

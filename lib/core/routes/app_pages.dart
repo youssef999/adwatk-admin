@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../features/banners/bindings/banners_binding.dart';
 import '../../features/banners/pages/banners_page.dart';
 import '../../features/commissions/bindings/commissions_binding.dart';
+import '../../features/commissions/pages/commissions_detail_page.dart';
 import '../../features/commissions/pages/commissions_page.dart';
 import '../../features/requests/bindings/requests_binding.dart';
 import '../../features/requests/pages/requests_page.dart';
@@ -47,6 +48,10 @@ class AppPages {
       name: AppRoutes.commissions,
       page: () => const CommissionsPage(),
       binding: CommissionsBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.commissionsDetail,
+      page: () => const CommissionsDetailPage(),
     ),
   ];
 }

@@ -6,16 +6,24 @@ import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/profit_period.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../shared/widgets/feedback/app_snackbar.dart';
 import '../models/app_commission_model.dart';
 import '../models/app_profit_trans_model.dart';
-import '../models/incentive_request_model.dart';
-import '../models/provider_commission_model.dart';
+import '../models/profit_linked_details.dart';
+import '../models/shipment_request_money_model.dart';
 import '../models/shipment_wallet_model.dart';
+import '../models/vendor_money_request_model.dart';
 import '../models/vendor_wallet_model.dart';
 import '../repositories/commissions_repository.dart';
 
-enum CommissionsTab { profits, vendorWallet, shipmentWallet, incentives }
+enum CommissionsTab {
+  profits,
+  vendorWallet,
+  shipmentWallet,
+  shipmentMoneyRequests,
+  vendorMoneyRequests,
+}
 
 class CommissionsController extends GetxController {
   CommissionsController({CommissionsRepository? repository})
@@ -38,32 +46,69 @@ class CommissionsController extends GetxController {
   List<AppProfitTransModel> appProfitTrans = [];
   List<VendorWalletModel> vendorWallet = [];
   List<ShipmentWalletModel> shipmentWallet = [];
-  List<IncentiveRequestModel> incentives = [];
-  List<ProviderCommissionModel> incentiveLinkedCommissions = [];
+  List<ShipmentRequestMoneyModel> shipmentMoneyRequests = [];
+  List<VendorMoneyRequestModel> vendorMoneyRequests = [];
+  ProfitLinkedDetails? profitLinkedDetails;
 
   AppProfitTransModel? selectedProfitTrans;
   VendorWalletModel? selectedVendorWallet;
   ShipmentWalletModel? selectedShipmentWallet;
-  IncentiveRequestModel? selectedIncentive;
+  ShipmentRequestMoneyModel? selectedShipmentMoneyRequest;
+  VendorMoneyRequestModel? selectedVendorMoneyRequest;
   AppCommissionModel? appCommissionSettings;
 
   String searchQuery = '';
   String? workerFilter;
   bool isLoading = false;
   bool isLoadingDetail = false;
+  bool isLoadingLinkedDetails = false;
   bool isSavingAppPercent = false;
   String? markingVendorSentId;
   String? markingShipmentSentId;
+  String? actingShipmentMoneyRequestId;
+  String? actingVendorMoneyRequestId;
   String? errorMessage;
 
-  List<IncentiveRequestModel> get filteredIncentives {
+  List<VendorMoneyRequestModel> get filteredVendorMoneyRequests {
     final q = searchQuery.trim().toLowerCase();
-    if (q.isEmpty) return incentives;
-    return incentives.where((i) {
-      return i.shopName.toLowerCase().contains(q) ||
-          i.workerId.toLowerCase().contains(q) ||
-          i.status.toLowerCase().contains(q) ||
-          i.id.toLowerCase().contains(q);
+    final list = [...vendorMoneyRequests];
+    list.sort((a, b) {
+      final aPending = a.isPending ? 0 : 1;
+      final bPending = b.isPending ? 0 : 1;
+      if (aPending != bPending) return aPending.compareTo(bPending);
+      return (b.createdAt ?? DateTime(0))
+          .compareTo(a.createdAt ?? DateTime(0));
+    });
+    if (q.isEmpty) return list;
+    return list.where((r) {
+      return r.shopName.toLowerCase().contains(q) ||
+          r.phone.toLowerCase().contains(q) ||
+          r.paymentMethod.toLowerCase().contains(q) ||
+          r.status.toLowerCase().contains(q) ||
+          '${r.amount}'.contains(q);
+    }).toList();
+  }
+
+  List<ShipmentRequestMoneyModel> get filteredShipmentMoneyRequests {
+    final q = searchQuery.trim().toLowerCase();
+    final list = [...shipmentMoneyRequests];
+    list.sort((a, b) {
+      // Pending first, then newest.
+      final aPending = a.isPending ? 0 : 1;
+      final bPending = b.isPending ? 0 : 1;
+      if (aPending != bPending) return aPending.compareTo(bPending);
+      return (b.createdAt ?? DateTime(0))
+          .compareTo(a.createdAt ?? DateTime(0));
+    });
+    if (q.isEmpty) return list;
+    return list.where((r) {
+      return r.userEmail.toLowerCase().contains(q) ||
+          r.userId.toLowerCase().contains(q) ||
+          r.phone.toLowerCase().contains(q) ||
+          r.paymentMethod.toLowerCase().contains(q) ||
+          r.status.toLowerCase().contains(q) ||
+          r.id.toLowerCase().contains(q) ||
+          r.transIds.any((id) => id.toLowerCase().contains(q));
     }).toList();
   }
 
@@ -214,14 +259,16 @@ class CommissionsController extends GetxController {
         _repository.fetchAppProfitTransactions(),
         _repository.fetchVendorWalletEntries(vendorId: workerFilter),
         _repository.fetchShipmentWalletEntries(),
-        _repository.fetchIncentiveRequests(workerId: workerFilter),
+        _repository.fetchShipmentMoneyRequests(),
+        _repository.fetchVendorMoneyRequests(workerId: workerFilter),
         _repository.fetchAppCommissionSettings(),
       ]);
       appProfitTrans = results[0] as List<AppProfitTransModel>;
       vendorWallet = results[1] as List<VendorWalletModel>;
       shipmentWallet = results[2] as List<ShipmentWalletModel>;
-      incentives = results[3] as List<IncentiveRequestModel>;
-      appCommissionSettings = results[4] as AppCommissionModel?;
+      shipmentMoneyRequests = results[3] as List<ShipmentRequestMoneyModel>;
+      vendorMoneyRequests = results[4] as List<VendorMoneyRequestModel>;
+      appCommissionSettings = results[5] as AppCommissionModel?;
       appPercentController.text =
           (appCommissionSettings?.value ?? 0).toString();
 
@@ -255,12 +302,24 @@ class CommissionsController extends GetxController {
           clearSelection();
         }
       }
-      if (selectedIncentive != null) {
-        final still = incentives.any((i) => i.id == selectedIncentive!.id);
+      if (selectedShipmentMoneyRequest != null) {
+        final still = shipmentMoneyRequests
+            .any((r) => r.id == selectedShipmentMoneyRequest!.id);
         if (still) {
-          selectedIncentive =
-              incentives.firstWhere((i) => i.id == selectedIncentive!.id);
-          await _loadIncentiveLinks(selectedIncentive!);
+          selectedShipmentMoneyRequest = shipmentMoneyRequests.firstWhere(
+            (r) => r.id == selectedShipmentMoneyRequest!.id,
+          );
+        } else {
+          clearSelection();
+        }
+      }
+      if (selectedVendorMoneyRequest != null) {
+        final still = vendorMoneyRequests
+            .any((r) => r.id == selectedVendorMoneyRequest!.id);
+        if (still) {
+          selectedVendorMoneyRequest = vendorMoneyRequests.firstWhere(
+            (r) => r.id == selectedVendorMoneyRequest!.id,
+          );
         } else {
           clearSelection();
         }
@@ -312,46 +371,466 @@ class CommissionsController extends GetxController {
     selectedProfitTrans = transaction;
     selectedVendorWallet = null;
     selectedShipmentWallet = null;
-    selectedIncentive = null;
-    incentiveLinkedCommissions = [];
+    selectedShipmentMoneyRequest = null;
+    selectedVendorMoneyRequest = null;
+    profitLinkedDetails = null;
     update([listId, detailId]);
+    Get.toNamed(AppRoutes.commissionsDetail);
+    _loadProfitLinkedDetails(transaction);
   }
 
   void selectVendorWallet(VendorWalletModel entry) {
     selectedVendorWallet = entry;
     selectedProfitTrans = null;
     selectedShipmentWallet = null;
-    selectedIncentive = null;
-    incentiveLinkedCommissions = [];
+    selectedShipmentMoneyRequest = null;
+    selectedVendorMoneyRequest = null;
+    profitLinkedDetails = null;
     update([listId, detailId]);
+    Get.toNamed(AppRoutes.commissionsDetail);
   }
 
   void selectShipmentWallet(ShipmentWalletModel entry) {
     selectedShipmentWallet = entry;
     selectedVendorWallet = null;
     selectedProfitTrans = null;
-    selectedIncentive = null;
-    incentiveLinkedCommissions = [];
+    selectedShipmentMoneyRequest = null;
+    selectedVendorMoneyRequest = null;
+    profitLinkedDetails = null;
     update([listId, detailId]);
+    Get.toNamed(AppRoutes.commissionsDetail);
   }
 
-  Future<void> selectIncentive(IncentiveRequestModel incentive) async {
-    selectedIncentive = incentive;
+  void selectShipmentMoneyRequest(ShipmentRequestMoneyModel request) {
+    selectedShipmentMoneyRequest = request;
     selectedVendorWallet = null;
     selectedShipmentWallet = null;
     selectedProfitTrans = null;
+    selectedVendorMoneyRequest = null;
+    profitLinkedDetails = null;
     update([listId, detailId]);
-    await _loadIncentiveLinks(incentive);
+    Get.toNamed(AppRoutes.commissionsDetail);
+  }
+
+  void selectVendorMoneyRequest(VendorMoneyRequestModel request) {
+    selectedVendorMoneyRequest = request;
+    selectedVendorWallet = null;
+    selectedShipmentWallet = null;
+    selectedShipmentMoneyRequest = null;
+    selectedProfitTrans = null;
+    profitLinkedDetails = null;
+    update([listId, detailId]);
+    Get.toNamed(AppRoutes.commissionsDetail);
   }
 
   void clearSelection() {
     selectedProfitTrans = null;
     selectedVendorWallet = null;
     selectedShipmentWallet = null;
-    selectedIncentive = null;
-    incentiveLinkedCommissions = [];
+    selectedShipmentMoneyRequest = null;
+    selectedVendorMoneyRequest = null;
+    profitLinkedDetails = null;
     isLoadingDetail = false;
+    isLoadingLinkedDetails = false;
     update([listId, detailId]);
+  }
+
+  Future<void> _loadProfitLinkedDetails(AppProfitTransModel transaction) async {
+    isLoadingLinkedDetails = true;
+    update([detailId]);
+    try {
+      profitLinkedDetails = await _repository.fetchProfitLinkedDetails(
+        orderId: transaction.orderId,
+        paymentTransactionId: transaction.paymentTransactionId,
+        shipmentOrderId: transaction.shipmentOrderId,
+        shipmentId: transaction.shipmentId,
+      );
+    } catch (_) {
+      profitLinkedDetails = const ProfitLinkedDetails();
+    } finally {
+      isLoadingLinkedDetails = false;
+      update([detailId]);
+    }
+  }
+
+  Future<void> confirmApproveShipmentMoneyRequest(
+    ShipmentRequestMoneyModel request,
+  ) async {
+    if (!request.isPending || actingShipmentMoneyRequestId != null) return;
+
+    final confirmed = await Get.dialog<bool>(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('تأكيد إرسال الأموال', style: AppTextStyles.h5),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'سيتم تحويل حالة الطلب إلى sent وتحديث معاملات shipments_wallet المرتبطة من done إلى sent.',
+                style: AppTextStyles.body1,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'المبلغ: ${request.amount} د.ع',
+                      style: AppTextStyles.body2.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'معاملات: ${request.transIds.length}',
+                      style: AppTextStyles.caption,
+                    ),
+                    Text(
+                      request.userEmail.isEmpty
+                          ? request.userId
+                          : request.userEmail,
+                      style: AppTextStyles.caption,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(result: false),
+                      child: Text(
+                        'إلغاء',
+                        style: AppTextStyles.button.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Get.back(result: true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.surface,
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'تأكيد الإرسال',
+                        style: AppTextStyles.button.copyWith(
+                          color: AppColors.surface,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+    await approveShipmentMoneyRequest(request);
+  }
+
+  Future<void> confirmRejectShipmentMoneyRequest(
+    ShipmentRequestMoneyModel request,
+  ) async {
+    if (!request.isPending || actingShipmentMoneyRequestId != null) return;
+
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        title: const Text('رفض طلب السحب', style: AppTextStyles.h5),
+        content: Text(
+          'هل أنت متأكد من رفض هذا الطلب؟\nالمبلغ: ${request.amount} د.ع',
+          style: AppTextStyles.body2,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: Text(
+              'إلغاء',
+              style: AppTextStyles.button.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
+            child: Text(
+              'رفض',
+              style: AppTextStyles.button.copyWith(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    await rejectShipmentMoneyRequest(request);
+  }
+
+  Future<void> approveShipmentMoneyRequest(
+    ShipmentRequestMoneyModel request,
+  ) async {
+    if (!request.isPending) return;
+
+    actingShipmentMoneyRequestId = request.id;
+    update([listId, detailId]);
+
+    try {
+      await _repository.approveShipmentMoneyRequest(request);
+      final updated = request.copyWith(status: 'sent');
+      final index =
+          shipmentMoneyRequests.indexWhere((r) => r.id == request.id);
+      if (index >= 0) shipmentMoneyRequests[index] = updated;
+      if (selectedShipmentMoneyRequest?.id == request.id) {
+        selectedShipmentMoneyRequest = updated;
+      }
+
+      // Refresh local wallet statuses for linked ids.
+      for (final id in request.transIds) {
+        final wi = shipmentWallet.indexWhere((e) => e.id == id);
+        if (wi >= 0 && shipmentWallet[wi].isDone) {
+          shipmentWallet[wi] = shipmentWallet[wi].copyWith(status: 'sent');
+        }
+      }
+
+      AppSnackbar.success('تم إرسال الأموال وتحديث المعاملات');
+    } catch (_) {
+      AppSnackbar.error('تعذر إرسال طلب الأموال');
+    } finally {
+      actingShipmentMoneyRequestId = null;
+      update([listId, detailId]);
+    }
+  }
+
+  Future<void> rejectShipmentMoneyRequest(
+    ShipmentRequestMoneyModel request,
+  ) async {
+    if (!request.isPending) return;
+
+    actingShipmentMoneyRequestId = request.id;
+    update([listId, detailId]);
+
+    try {
+      await _repository.rejectShipmentMoneyRequest(request.id);
+      final updated = request.copyWith(status: 'rejected');
+      final index =
+          shipmentMoneyRequests.indexWhere((r) => r.id == request.id);
+      if (index >= 0) shipmentMoneyRequests[index] = updated;
+      if (selectedShipmentMoneyRequest?.id == request.id) {
+        selectedShipmentMoneyRequest = updated;
+      }
+      AppSnackbar.success('تم رفض طلب السحب');
+    } catch (_) {
+      AppSnackbar.error('تعذر رفض طلب السحب');
+    } finally {
+      actingShipmentMoneyRequestId = null;
+      update([listId, detailId]);
+    }
+  }
+
+  Future<void> confirmApproveVendorMoneyRequest(
+    VendorMoneyRequestModel request,
+  ) async {
+    if (!request.isPending || actingVendorMoneyRequestId != null) return;
+
+    final confirmed = await Get.dialog<bool>(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('تأكيد إرسال أرباح التاجر', style: AppTextStyles.h5),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'سيتم تحويل حالة الطلب إلى sent وتحديث معاملات vendors_wallet المرتبطة إلى sent.',
+                style: AppTextStyles.body1,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'المحل: ${request.shopName.isEmpty ? '—' : request.shopName}',
+                      style: AppTextStyles.body2,
+                    ),
+                    Text(
+                      'المبلغ: ${request.amount} د.ع',
+                      style: AppTextStyles.h6,
+                    ),
+                    Text(
+                      'معاملات مرتبطة: ${request.vendorsWalletIds.length}',
+                      style: AppTextStyles.caption,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(result: false),
+                      child: Text(
+                        'إلغاء',
+                        style: AppTextStyles.button.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Get.back(result: true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.surface,
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'تأكيد الإرسال',
+                        style: AppTextStyles.button.copyWith(
+                          color: AppColors.surface,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+    await approveVendorMoneyRequest(request);
+  }
+
+  Future<void> confirmRejectVendorMoneyRequest(
+    VendorMoneyRequestModel request,
+  ) async {
+    if (!request.isPending || actingVendorMoneyRequestId != null) return;
+
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        title: const Text('رفض طلب السحب', style: AppTextStyles.h5),
+        content: Text(
+          'هل أنت متأكد من رفض هذا الطلب؟\nالمبلغ: ${request.amount} د.ع',
+          style: AppTextStyles.body2,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: Text(
+              'إلغاء',
+              style: AppTextStyles.button.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
+            child: Text(
+              'رفض',
+              style: AppTextStyles.button.copyWith(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    await rejectVendorMoneyRequest(request);
+  }
+
+  Future<void> approveVendorMoneyRequest(
+    VendorMoneyRequestModel request,
+  ) async {
+    if (!request.isPending) return;
+
+    actingVendorMoneyRequestId = request.id;
+    update([listId, detailId]);
+
+    try {
+      await _repository.approveVendorMoneyRequest(request);
+      final updated = request.copyWith(status: 'sent');
+      final index =
+          vendorMoneyRequests.indexWhere((r) => r.id == request.id);
+      if (index >= 0) vendorMoneyRequests[index] = updated;
+      if (selectedVendorMoneyRequest?.id == request.id) {
+        selectedVendorMoneyRequest = updated;
+      }
+
+      for (final id in request.vendorsWalletIds) {
+        final wi = vendorWallet.indexWhere((e) => e.id == id);
+        if (wi >= 0) {
+          vendorWallet[wi] = vendorWallet[wi].copyWith(status: 'sent');
+        }
+      }
+
+      AppSnackbar.success('تم إرسال الأرباح وتحديث معاملات التاجر');
+    } catch (_) {
+      AppSnackbar.error('تعذر إرسال طلب سحب التاجر');
+    } finally {
+      actingVendorMoneyRequestId = null;
+      update([listId, detailId]);
+    }
+  }
+
+  Future<void> rejectVendorMoneyRequest(
+    VendorMoneyRequestModel request,
+  ) async {
+    if (!request.isPending) return;
+
+    actingVendorMoneyRequestId = request.id;
+    update([listId, detailId]);
+
+    try {
+      await _repository.rejectVendorMoneyRequest(request.id);
+      final updated = request.copyWith(status: 'rejected');
+      final index =
+          vendorMoneyRequests.indexWhere((r) => r.id == request.id);
+      if (index >= 0) vendorMoneyRequests[index] = updated;
+      if (selectedVendorMoneyRequest?.id == request.id) {
+        selectedVendorMoneyRequest = updated;
+      }
+      AppSnackbar.success('تم رفض طلب السحب');
+    } catch (_) {
+      AppSnackbar.error('تعذر رفض طلب السحب');
+    } finally {
+      actingVendorMoneyRequestId = null;
+      update([listId, detailId]);
+    }
   }
 
   Future<void> confirmMarkVendorWalletSent(VendorWalletModel entry) async {
@@ -704,20 +1183,6 @@ class CommissionsController extends GetxController {
     } finally {
       isSavingAppPercent = false;
       update([settingsId]);
-    }
-  }
-
-  Future<void> _loadIncentiveLinks(IncentiveRequestModel incentive) async {
-    isLoadingDetail = true;
-    update([detailId]);
-    try {
-      incentiveLinkedCommissions =
-          await _repository.fetchCommissionsByIds(incentive.commissionDocIds);
-    } catch (_) {
-      incentiveLinkedCommissions = [];
-    } finally {
-      isLoadingDetail = false;
-      update([detailId]);
     }
   }
 }

@@ -42,6 +42,8 @@ dependencies:
   image: ^4.9.1
   cached_network_image: ^3.4.1
   uuid: ^4.6.0
+  http: ^1.6.0
+  jose: ^0.3.5+2
 
 dev_dependencies:
   flutter_test:

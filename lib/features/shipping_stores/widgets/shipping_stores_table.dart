@@ -12,6 +12,7 @@ import '../../../shared/widgets/cards/app_card.dart';
 import '../../../shared/widgets/media/app_network_image.dart';
 import '../controllers/shipping_stores_controller.dart';
 import '../models/shippiment_store_model.dart';
+import 'shipping_finance_dialog.dart';
 import 'shipping_store_form_dialog.dart';
 
 class ShippingStoresTable extends StatelessWidget {
@@ -40,11 +41,13 @@ class ShippingStoresTable extends StatelessWidget {
             headingRowColor: WidgetStateProperty.all(
               AppColors.background,
             ),
-            dataRowMinHeight: 64,
-            dataRowMaxHeight: 72,
+            dataRowMinHeight: 72,
+            dataRowMaxHeight: 88,
             columns: const [
               DataColumn(label: Text('المتجر', style: AppTextStyles.h6)),
               DataColumn(label: Text('البريد', style: AppTextStyles.h6)),
+              DataColumn(label: Text('المحفظة', style: AppTextStyles.h6)),
+              DataColumn(label: Text('حد السالب', style: AppTextStyles.h6)),
               DataColumn(label: Text('profileId', style: AppTextStyles.h6)),
               DataColumn(label: Text('التقييم', style: AppTextStyles.h6)),
               DataColumn(label: Text('حجم المركبة', style: AppTextStyles.h6)),
@@ -52,6 +55,8 @@ class ShippingStoresTable extends StatelessWidget {
               DataColumn(label: Text('إجراءات', style: AppTextStyles.h6)),
             ],
             rows: stores.map((store) {
+              final balance = controller.walletAmountFor(store);
+              final minAlert = controller.minWalletAlertFor(store);
               return DataRow(
                 cells: [
                   DataCell(
@@ -71,6 +76,32 @@ class ShippingStoresTable extends StatelessWidget {
                     ),
                   ),
                   DataCell(Text(store.email, style: AppTextStyles.body2)),
+                  DataCell(
+                    Text(
+                      _formatAmount(balance),
+                      style: AppTextStyles.body2.copyWith(
+                        color: balance < 0
+                            ? AppColors.error
+                            : AppColors.success,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      minAlert == null
+                          ? '—'
+                          : minAlert == 0
+                              ? 'مقيد (0)'
+                              : _formatAmount(minAlert),
+                      style: AppTextStyles.body2.copyWith(
+                        color: minAlert == 0
+                            ? AppColors.error
+                            : AppColors.warning,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                   DataCell(Text(store.profileId, style: AppTextStyles.caption)),
                   DataCell(
                     Row(
@@ -116,6 +147,24 @@ class ShippingStoresTable extends StatelessWidget {
                     Row(
                       children: [
                         IconButton(
+                          tooltip: 'إرسال إشعار',
+                          onPressed: () =>
+                              controller.openSendNotification(store),
+                          icon: const Icon(
+                            Icons.notifications_active_outlined,
+                            size: AppIconSize.md,
+                          ),
+                          color: AppColors.primary,
+                        ),
+                        IconButton(
+                          tooltip: 'المحفظة والحد الأقصى',
+                          onPressed: () => _openFinance(controller, store),
+                          icon: const Icon(
+                            Icons.account_balance_wallet_outlined,
+                            color: AppColors.success,
+                          ),
+                        ),
+                        IconButton(
                           tooltip: 'تعديل',
                           onPressed: () => _openEdit(controller, store),
                           icon: const Icon(
@@ -145,11 +194,27 @@ class ShippingStoresTable extends StatelessWidget {
     );
   }
 
+  String _formatAmount(num value) {
+    final text = value % 1 == 0 ? value.toInt().toString() : value.toString();
+    return '$text د.ع';
+  }
+
+  Future<void> _openFinance(
+    ShippingStoresController controller,
+    ShippimentStoreModel store,
+  ) async {
+    controller.prepareFinance(store);
+    await Get.dialog<bool>(
+      const ShippingFinanceDialog(),
+      barrierDismissible: false,
+    );
+  }
+
   Future<void> _openEdit(
     ShippingStoresController controller,
     ShippimentStoreModel store,
   ) async {
-    controller.prepareEdit(store);
+    await controller.prepareEdit(store);
     await Get.dialog<bool>(
       const ShippingStoreFormDialog(),
       barrierDismissible: false,
@@ -202,6 +267,8 @@ class ShippingStoreMobileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<ShippingStoresController>();
+    final balance = controller.walletAmountFor(store);
+    final minAlert = controller.minWalletAlertFor(store);
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -222,6 +289,28 @@ class ShippingStoreMobileCard extends StatelessWidget {
                 Text(store.email, style: AppTextStyles.body2),
                 const SizedBox(height: AppSpacing.xs),
                 Text(store.profileId, style: AppTextStyles.caption),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'المحفظة: ${_formatAmount(balance)}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: balance < 0 ? AppColors.error : AppColors.success,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  minAlert == null
+                      ? 'الحد الأقصى في السالب: —'
+                      : minAlert == 0
+                          ? 'الرصيد السالب: مقيد (حد = 0)'
+                          : 'الحد الأقصى في السالب: ${_formatAmount(minAlert)}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: minAlert == 0
+                        ? AppColors.error
+                        : AppColors.warning,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.sm),
                 Row(
                   children: [
@@ -245,8 +334,22 @@ class ShippingStoreMobileCard extends StatelessWidget {
             ),
           ),
           IconButton(
+            tooltip: 'المحفظة والحد الأقصى',
             onPressed: () async {
-              controller.prepareEdit(store);
+              controller.prepareFinance(store);
+              await Get.dialog<bool>(
+                const ShippingFinanceDialog(),
+                barrierDismissible: false,
+              );
+            },
+            icon: const Icon(
+              Icons.account_balance_wallet_outlined,
+              color: AppColors.success,
+            ),
+          ),
+          IconButton(
+            onPressed: () async {
+              await controller.prepareEdit(store);
               await Get.dialog<bool>(
                 const ShippingStoreFormDialog(),
                 barrierDismissible: false,
@@ -289,6 +392,11 @@ class ShippingStoreMobileCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatAmount(num value) {
+    final text = value % 1 == 0 ? value.toInt().toString() : value.toString();
+    return '$text د.ع';
   }
 }
 
