@@ -61,7 +61,11 @@ class ShippingStoresController extends GetxController {
       return s.name.toLowerCase().contains(q) ||
           s.email.toLowerCase().contains(q) ||
           s.profileId.toLowerCase().contains(q) ||
-          s.vehicleSizeType.toLowerCase().contains(q);
+          s.vehicleSizeType.toLowerCase().contains(q) ||
+          s.vehicleName.toLowerCase().contains(q) ||
+          s.vehicleDriverName.toLowerCase().contains(q) ||
+          s.vehicleType.toLowerCase().contains(q) ||
+          s.vehicleDistinctiveNumber.toLowerCase().contains(q);
     }).toList();
   }
 

@@ -11,6 +11,15 @@ class ShippimentStoreModel {
     required this.rate,
     required this.vehicleSizeType,
     this.fcmToken,
+    this.lat,
+    this.lng,
+    this.locationUpdatedAt,
+    this.vehicleDistinctiveNumber = '',
+    this.vehicleImageUrl = '',
+    this.vehicleImageUpdatedAt,
+    this.vehicleName = '',
+    this.vehicleDriverName = '',
+    this.vehicleType = '',
     this.createdAt,
     this.updatedAt,
     this.fcmTokenUpdatedAt,
@@ -25,12 +34,23 @@ class ShippimentStoreModel {
   final num rate;
   final String vehicleSizeType;
   final String? fcmToken;
+  final double? lat;
+  final double? lng;
+  final DateTime? locationUpdatedAt;
+  final String vehicleDistinctiveNumber;
+  final String vehicleImageUrl;
+  final DateTime? vehicleImageUpdatedAt;
+  final String vehicleName;
+  final String vehicleDriverName;
+  final String vehicleType;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? fcmTokenUpdatedAt;
   final DateTime? profileImageUpdatedAt;
 
   static const List<String> vehicleSizeTypes = ['small', 'medium', 'large'];
+
+  bool get hasLocation => lat != null && lng != null;
 
   factory ShippimentStoreModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
@@ -45,6 +65,17 @@ class ShippimentStoreModel {
       rate: data['rate'] as num? ?? 0,
       vehicleSizeType: data['vehicleSizeType'] as String? ?? '',
       fcmToken: (data['fcmToken'] as String?) ?? (data['fcm_token'] as String?),
+      lat: (data['lat'] as num?)?.toDouble(),
+      lng: (data['lng'] as num?)?.toDouble(),
+      locationUpdatedAt: (data['locationUpdatedAt'] as Timestamp?)?.toDate(),
+      vehicleDistinctiveNumber:
+          data['vehicleDistinctiveNumber'] as String? ?? '',
+      vehicleImageUrl: data['vehicleImageUrl'] as String? ?? '',
+      vehicleImageUpdatedAt:
+          (data['vehicleImageUpdatedAt'] as Timestamp?)?.toDate(),
+      vehicleName: data['vehicleName'] as String? ?? '',
+      vehicleDriverName: data['vehicleDriverName'] as String? ?? '',
+      vehicleType: data['vehicleType'] as String? ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
       fcmTokenUpdatedAt: (data['fcmTokenUpdatedAt'] as Timestamp?)?.toDate(),
@@ -63,6 +94,15 @@ class ShippimentStoreModel {
       'vehicleSizeType': vehicleSizeType,
       'fcmToken': fcmToken,
       'fcm_token': fcmToken,
+      if (lat != null) 'lat': lat,
+      if (lng != null) 'lng': lng,
+      'vehicleDistinctiveNumber': vehicleDistinctiveNumber.trim(),
+      'vehicleImageUrl': vehicleImageUrl,
+      'vehicleName': vehicleName.trim(),
+      'vehicleDriverName': vehicleDriverName.trim(),
+      'vehicleType': vehicleType.trim().isEmpty
+          ? vehicleSizeType
+          : vehicleType.trim(),
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
       if (includeImageTimestamps)
@@ -78,6 +118,15 @@ class ShippimentStoreModel {
       'profileImageUrl': profileImageUrl,
       'rate': rate,
       'vehicleSizeType': vehicleSizeType,
+      if (lat != null) 'lat': lat,
+      if (lng != null) 'lng': lng,
+      'vehicleDistinctiveNumber': vehicleDistinctiveNumber.trim(),
+      'vehicleImageUrl': vehicleImageUrl,
+      'vehicleName': vehicleName.trim(),
+      'vehicleDriverName': vehicleDriverName.trim(),
+      'vehicleType': vehicleType.trim().isEmpty
+          ? vehicleSizeType
+          : vehicleType.trim(),
       'updatedAt': FieldValue.serverTimestamp(),
       if (imageChanged) 'profileImageUpdatedAt': FieldValue.serverTimestamp(),
     };
@@ -91,6 +140,15 @@ class ShippimentStoreModel {
     num? rate,
     String? vehicleSizeType,
     String? fcmToken,
+    double? lat,
+    double? lng,
+    DateTime? locationUpdatedAt,
+    String? vehicleDistinctiveNumber,
+    String? vehicleImageUrl,
+    DateTime? vehicleImageUpdatedAt,
+    String? vehicleName,
+    String? vehicleDriverName,
+    String? vehicleType,
   }) {
     return ShippimentStoreModel(
       id: id,
@@ -101,6 +159,17 @@ class ShippimentStoreModel {
       rate: rate ?? this.rate,
       vehicleSizeType: vehicleSizeType ?? this.vehicleSizeType,
       fcmToken: fcmToken ?? this.fcmToken,
+      lat: lat ?? this.lat,
+      lng: lng ?? this.lng,
+      locationUpdatedAt: locationUpdatedAt ?? this.locationUpdatedAt,
+      vehicleDistinctiveNumber:
+          vehicleDistinctiveNumber ?? this.vehicleDistinctiveNumber,
+      vehicleImageUrl: vehicleImageUrl ?? this.vehicleImageUrl,
+      vehicleImageUpdatedAt:
+          vehicleImageUpdatedAt ?? this.vehicleImageUpdatedAt,
+      vehicleName: vehicleName ?? this.vehicleName,
+      vehicleDriverName: vehicleDriverName ?? this.vehicleDriverName,
+      vehicleType: vehicleType ?? this.vehicleType,
       createdAt: createdAt,
       updatedAt: updatedAt,
       fcmTokenUpdatedAt: fcmTokenUpdatedAt,

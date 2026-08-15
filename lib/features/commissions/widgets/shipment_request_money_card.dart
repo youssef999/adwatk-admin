@@ -34,7 +34,7 @@ class ShipmentRequestMoneyCard extends StatelessWidget {
         (onApprove != null || onReject != null);
 
     final card = Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: selected
             ? AppColors.warning.withValues(alpha: 0.08)
@@ -63,7 +63,7 @@ class ShipmentRequestMoneyCard extends StatelessWidget {
                   size: AppIconSize.md,
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,6 +79,8 @@ class ShipmentRequestMoneyCard extends StatelessWidget {
                     Text(
                       DateFormatUtils.format(request.createdAt),
                       style: AppTextStyles.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -86,7 +88,7 @@ class ShipmentRequestMoneyCard extends StatelessWidget {
               StatusBadge(status: request.status),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               _MiniStat(
@@ -120,12 +122,12 @@ class ShipmentRequestMoneyCard extends StatelessWidget {
             Text(
               request.howToGetMoney,
               style: AppTextStyles.caption,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ],
           if (showActions && onTap == null) ...[
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
             _ActionRow(
               isActing: isActing,
               onApprove: onApprove,
@@ -152,7 +154,7 @@ class ShipmentRequestMoneyCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        tappable,
+        Expanded(child: tappable),
         const SizedBox(height: AppSpacing.sm),
         _ActionRow(
           isActing: isActing,

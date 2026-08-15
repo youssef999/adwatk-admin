@@ -7,6 +7,8 @@ import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/date_format_utils.dart';
+import '../../../core/utils/maps_launcher.dart';
 import '../../../core/utils/storage_url.dart';
 import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/inputs/app_text_field.dart';
@@ -125,6 +127,10 @@ class ShippingStoreFormDialog extends StatelessWidget {
                                 )
                                 .toList(),
                           ),
+                          if (controller.editingStore != null) ...[
+                            const SizedBox(height: AppSpacing.lg),
+                            _StoreExtraDetails(store: controller.editingStore!),
+                          ],
                         ],
                       ),
                     ),
@@ -240,6 +246,107 @@ class _EmptyImage extends StatelessWidget {
           ),
           SizedBox(height: AppSpacing.sm),
           Text('اختر صورة البروفايل', style: AppTextStyles.body2),
+        ],
+      ),
+    );
+  }
+}
+
+class _StoreExtraDetails extends StatelessWidget {
+  const _StoreExtraDetails({required this.store});
+
+  final ShippimentStoreModel store;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('بيانات المركبة والموقع', style: AppTextStyles.h6),
+          const SizedBox(height: AppSpacing.md),
+          if (StorageUrl.isUsable(store.vehicleImageUrl)) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: SizedBox(
+                height: 120,
+                child: AppNetworkImage(
+                  url: store.vehicleImageUrl,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          _DetailRow(
+            label: 'اسم المركبة',
+            value: store.vehicleName.isEmpty ? '—' : store.vehicleName,
+          ),
+          _DetailRow(
+            label: 'اسم السائق',
+            value: store.vehicleDriverName.isEmpty
+                ? '—'
+                : store.vehicleDriverName,
+          ),
+          _DetailRow(
+            label: 'نوع المركبة',
+            value: store.vehicleType.isEmpty ? '—' : store.vehicleType,
+          ),
+          _DetailRow(
+            label: 'الرقم المميز',
+            value: store.vehicleDistinctiveNumber.isEmpty
+                ? '—'
+                : store.vehicleDistinctiveNumber,
+          ),
+          _DetailRow(
+            label: 'تحديث الموقع',
+            value: DateFormatUtils.format(store.locationUpdatedAt),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (store.hasLocation)
+            AppButton(
+              label: 'فتح الموقع على خرائط جوجل',
+              icon: Icons.map_outlined,
+              variant: AppButtonVariant.outlined,
+              isExpanded: true,
+              onPressed: () => MapsLauncher.openLatLng(
+                lat: store.lat!,
+                lng: store.lng!,
+              ),
+            )
+          else
+            Text(
+              'لا يوجد موقع محفوظ',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: AppTextStyles.caption)),
+          Text(value, style: AppTextStyles.body2),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/utils/status_label_utils.dart';
 import '../../commissions/models/provider_commission_model.dart';
 import '../../shipping_stores/models/shippiment_store_model.dart';
 import '../models/accepted_offer_model.dart';
@@ -47,11 +48,15 @@ class RequestsController extends GetxController {
     final set = <String>{};
     if (sourceTab == RequestsSourceTab.saleParts) {
       for (final p in saleParts) {
-        if (p.status.isNotEmpty) set.add(p.status);
+        if (p.status.isNotEmpty) {
+          set.add(StatusLabelUtils.canonicalizeForFilter(p.status));
+        }
       }
     } else {
       for (final r in requests) {
-        if (r.status.isNotEmpty) set.add(r.status);
+        if (r.status.isNotEmpty) {
+          set.add(StatusLabelUtils.canonicalizeForFilter(r.status));
+        }
       }
     }
     final list = set.toList()..sort();
@@ -60,7 +65,7 @@ class RequestsController extends GetxController {
 
   List<RequestModel> get filteredRequests {
     return requests.where((r) {
-      if (statusFilter != 'all' && r.status != statusFilter) return false;
+      if (!StatusLabelUtils.matchesFilter(r.status, statusFilter)) return false;
       final q = searchQuery.trim().toLowerCase();
       if (q.isEmpty) return true;
       return r.partName.toLowerCase().contains(q) ||
@@ -74,7 +79,7 @@ class RequestsController extends GetxController {
 
   List<SalePartModel> get filteredSaleParts {
     return saleParts.where((p) {
-      if (statusFilter != 'all' && p.status != statusFilter) return false;
+      if (!StatusLabelUtils.matchesFilter(p.status, statusFilter)) return false;
       final q = searchQuery.trim().toLowerCase();
       if (q.isEmpty) return true;
       return p.partName.toLowerCase().contains(q) ||
@@ -209,7 +214,9 @@ class RequestsController extends GetxController {
   }
 
   void setStatusFilter(String status) {
-    statusFilter = status;
+    statusFilter = status == 'all'
+        ? 'all'
+        : StatusLabelUtils.canonicalizeForFilter(status);
     update([listId]);
   }
 

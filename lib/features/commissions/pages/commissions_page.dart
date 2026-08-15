@@ -474,7 +474,7 @@ class _ShipmentMoneyRequestsList extends StatelessWidget {
             crossAxisCount: cols,
             mainAxisSpacing: AppSpacing.md,
             crossAxisSpacing: AppSpacing.md,
-            mainAxisExtent: 240,
+            mainAxisExtent: 300,
           ),
           itemCount: items.length,
           itemBuilder: (context, index) {

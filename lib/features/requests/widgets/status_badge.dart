@@ -36,6 +36,7 @@ class StatusBadge extends StatelessWidget {
   Color _colorFor(String value) {
     switch (value.toLowerCase()) {
       case 'completed':
+      case 'delivery_completed':
       case 'accepted':
       case 'delivered':
       case 'done':

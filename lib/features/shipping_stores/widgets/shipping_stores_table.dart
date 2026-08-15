@@ -6,7 +6,7 @@ import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/utils/date_format_utils.dart';
+import '../../../core/utils/maps_launcher.dart';
 import '../../../core/utils/storage_url.dart';
 import '../../../shared/widgets/cards/app_card.dart';
 import '../../../shared/widgets/media/app_network_image.dart';
@@ -41,22 +41,27 @@ class ShippingStoresTable extends StatelessWidget {
             headingRowColor: WidgetStateProperty.all(
               AppColors.background,
             ),
-            dataRowMinHeight: 72,
-            dataRowMaxHeight: 88,
+            dataRowMinHeight: 80,
+            dataRowMaxHeight: 96,
             columns: const [
               DataColumn(label: Text('المتجر', style: AppTextStyles.h6)),
               DataColumn(label: Text('البريد', style: AppTextStyles.h6)),
               DataColumn(label: Text('المحفظة', style: AppTextStyles.h6)),
               DataColumn(label: Text('حد السالب', style: AppTextStyles.h6)),
-              DataColumn(label: Text('profileId', style: AppTextStyles.h6)),
-              DataColumn(label: Text('التقييم', style: AppTextStyles.h6)),
-              DataColumn(label: Text('حجم المركبة', style: AppTextStyles.h6)),
-              DataColumn(label: Text('تاريخ الإنشاء', style: AppTextStyles.h6)),
+              DataColumn(label: Text('المركبة', style: AppTextStyles.h6)),
+              DataColumn(label: Text('السائق', style: AppTextStyles.h6)),
+              DataColumn(label: Text('رقم مميز', style: AppTextStyles.h6)),
+              DataColumn(label: Text('الموقع', style: AppTextStyles.h6)),
               DataColumn(label: Text('إجراءات', style: AppTextStyles.h6)),
             ],
             rows: stores.map((store) {
               final balance = controller.walletAmountFor(store);
               final minAlert = controller.minWalletAlertFor(store);
+              final vehicleMeta = [
+                if (store.vehicleType.trim().isNotEmpty) store.vehicleType,
+                if (store.vehicleSizeType.trim().isNotEmpty)
+                  store.vehicleSizeType,
+              ].join(' · ');
               return DataRow(
                 cells: [
                   DataCell(
@@ -66,10 +71,23 @@ class ShippingStoresTable extends StatelessWidget {
                         const SizedBox(width: AppSpacing.sm),
                         ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 160),
-                          child: Text(
-                            store.name.isEmpty ? '—' : store.name,
-                            style: AppTextStyles.body1,
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                store.name.isEmpty ? '—' : store.name,
+                                style: AppTextStyles.body1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                store.profileId.isEmpty
+                                    ? '—'
+                                    : store.profileId,
+                                style: AppTextStyles.caption,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -102,46 +120,79 @@ class ShippingStoresTable extends StatelessWidget {
                       ),
                     ),
                   ),
-                  DataCell(Text(store.profileId, style: AppTextStyles.caption)),
                   DataCell(
                     Row(
                       children: [
-                        const Icon(
-                          Icons.star,
-                          size: AppIconSize.sm,
-                          color: AppColors.warning,
+                        _Avatar(
+                          url: store.vehicleImageUrl,
+                          name: store.vehicleName.isEmpty
+                              ? store.name
+                              : store.vehicleName,
                         ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text('${store.rate}', style: AppTextStyles.body2),
+                        const SizedBox(width: AppSpacing.sm),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 140),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                store.vehicleName.isEmpty
+                                    ? '—'
+                                    : store.vehicleName,
+                                style: AppTextStyles.body2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                vehicleMeta.isEmpty ? '—' : vehicleMeta,
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.info,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   DataCell(
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm,
-                        vertical: AppSpacing.xs,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.info.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                      ),
-                      child: Text(
-                        store.vehicleSizeType.isEmpty
-                            ? '—'
-                            : store.vehicleSizeType,
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.info,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                    Text(
+                      store.vehicleDriverName.isEmpty
+                          ? '—'
+                          : store.vehicleDriverName,
+                      style: AppTextStyles.body2,
                     ),
                   ),
                   DataCell(
                     Text(
-                      DateFormatUtils.format(store.createdAt),
-                      style: AppTextStyles.caption,
+                      store.vehicleDistinctiveNumber.isEmpty
+                          ? '—'
+                          : store.vehicleDistinctiveNumber,
+                      style: AppTextStyles.body2,
                     ),
+                  ),
+                  DataCell(
+                    store.hasLocation
+                        ? TextButton.icon(
+                            onPressed: () => MapsLauncher.openLatLng(
+                              lat: store.lat!,
+                              lng: store.lng!,
+                            ),
+                            icon: const Icon(
+                              Icons.map_outlined,
+                              size: AppIconSize.sm,
+                            ),
+                            label: Text(
+                              '${store.lat!.toStringAsFixed(4)}, '
+                              '${store.lng!.toStringAsFixed(4)}',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          )
+                        : Text('—', style: AppTextStyles.caption),
                   ),
                   DataCell(
                     Row(
@@ -269,125 +320,172 @@ class ShippingStoreMobileCard extends StatelessWidget {
     final controller = Get.find<ShippingStoresController>();
     final balance = controller.walletAmountFor(store);
     final minAlert = controller.minWalletAlertFor(store);
+    final vehicleMeta = [
+      if (store.vehicleType.trim().isNotEmpty) store.vehicleType,
+      if (store.vehicleSizeType.trim().isNotEmpty) store.vehicleSizeType,
+      if (store.vehicleDistinctiveNumber.trim().isNotEmpty)
+        '#${store.vehicleDistinctiveNumber}',
+    ].join(' · ');
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Avatar(url: store.profileImageUrl, name: store.name, size: 48),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  store.name.isEmpty ? '—' : store.name,
-                  style: AppTextStyles.h6,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(store.email, style: AppTextStyles.body2),
-                const SizedBox(height: AppSpacing.xs),
-                Text(store.profileId, style: AppTextStyles.caption),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'المحفظة: ${_formatAmount(balance)}',
-                  style: AppTextStyles.caption.copyWith(
-                    color: balance < 0 ? AppColors.error : AppColors.success,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  minAlert == null
-                      ? 'الحد الأقصى في السالب: —'
-                      : minAlert == 0
-                          ? 'الرصيد السالب: مقيد (حد = 0)'
-                          : 'الحد الأقصى في السالب: ${_formatAmount(minAlert)}',
-                  style: AppTextStyles.caption.copyWith(
-                    color: minAlert == 0
-                        ? AppColors.error
-                        : AppColors.warning,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Avatar(url: store.profileImageUrl, name: store.name, size: 48),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.star,
-                      size: AppIconSize.sm,
-                      color: AppColors.warning,
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text('${store.rate}', style: AppTextStyles.caption),
-                    const SizedBox(width: AppSpacing.md),
                     Text(
-                      store.vehicleSizeType,
+                      store.name.isEmpty ? '—' : store.name,
+                      style: AppTextStyles.h6,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(store.email, style: AppTextStyles.body2),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(store.profileId, style: AppTextStyles.caption),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'المحفظة: ${_formatAmount(balance)}',
                       style: AppTextStyles.caption.copyWith(
-                        color: AppColors.info,
+                        color:
+                            balance < 0 ? AppColors.error : AppColors.success,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      minAlert == null
+                          ? 'الحد الأقصى في السالب: —'
+                          : minAlert == 0
+                              ? 'الرصيد السالب: مقيد (حد = 0)'
+                              : 'الحد الأقصى في السالب: ${_formatAmount(minAlert)}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: minAlert == 0
+                            ? AppColors.error
+                            : AppColors.warning,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: 'المحفظة والحد الأقصى',
-            onPressed: () async {
-              controller.prepareFinance(store);
-              await Get.dialog<bool>(
-                const ShippingFinanceDialog(),
-                barrierDismissible: false,
-              );
-            },
-            icon: const Icon(
-              Icons.account_balance_wallet_outlined,
-              color: AppColors.success,
-            ),
-          ),
-          IconButton(
-            onPressed: () async {
-              await controller.prepareEdit(store);
-              await Get.dialog<bool>(
-                const ShippingStoreFormDialog(),
-                barrierDismissible: false,
-              );
-            },
-            icon: const Icon(Icons.edit_outlined, color: AppColors.info),
-          ),
-          IconButton(
-            onPressed: () async {
-              final confirmed = await Get.dialog<bool>(
-                AlertDialog(
-                  title: const Text('حذف متجر الشحن', style: AppTextStyles.h5),
-                  content: Text(
-                    'هل تريد حذف "${store.name}"؟',
-                    style: AppTextStyles.body2,
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              _Avatar(
+                url: store.vehicleImageUrl,
+                name: store.vehicleName.isEmpty ? 'V' : store.vehicleName,
+                size: 40,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      store.vehicleName.isEmpty
+                          ? 'مركبة غير محددة'
+                          : store.vehicleName,
+                      style: AppTextStyles.body2.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (store.vehicleDriverName.trim().isNotEmpty)
+                      Text(
+                        'السائق: ${store.vehicleDriverName}',
+                        style: AppTextStyles.caption,
+                      ),
+                    Text(
+                      vehicleMeta.isEmpty ? '—' : vehicleMeta,
+                      style: AppTextStyles.caption,
+                    ),
+                  ],
+                ),
+              ),
+              if (store.hasLocation)
+                IconButton(
+                  tooltip: 'فتح على خرائط جوجل',
+                  onPressed: () => MapsLauncher.openLatLng(
+                    lat: store.lat!,
+                    lng: store.lng!,
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Get.back(result: false),
-                      child: const Text('إلغاء'),
-                    ),
-                    TextButton(
-                      onPressed: () => Get.back(result: true),
-                      child: Text(
-                        'حذف',
-                        style: AppTextStyles.button.copyWith(
-                          color: AppColors.error,
-                        ),
-                      ),
-                    ),
-                  ],
+                  icon: const Icon(Icons.map_outlined),
+                  color: AppColors.primary,
                 ),
-              );
-              if (confirmed == true) {
-                await controller.deleteStore(store);
-              }
-            },
-            icon: const Icon(Icons.delete_outline, color: AppColors.error),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              const Spacer(),
+              IconButton(
+                tooltip: 'المحفظة والحد الأقصى',
+                onPressed: () async {
+                  controller.prepareFinance(store);
+                  await Get.dialog<bool>(
+                    const ShippingFinanceDialog(),
+                    barrierDismissible: false,
+                  );
+                },
+                icon: const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: AppColors.success,
+                ),
+              ),
+              IconButton(
+                onPressed: () async {
+                  await controller.prepareEdit(store);
+                  await Get.dialog<bool>(
+                    const ShippingStoreFormDialog(),
+                    barrierDismissible: false,
+                  );
+                },
+                icon: const Icon(Icons.edit_outlined, color: AppColors.info),
+              ),
+              IconButton(
+                onPressed: () async {
+                  final confirmed = await Get.dialog<bool>(
+                    AlertDialog(
+                      title: const Text(
+                        'حذف متجر الشحن',
+                        style: AppTextStyles.h5,
+                      ),
+                      content: Text(
+                        'هل تريد حذف "${store.name}"؟',
+                        style: AppTextStyles.body2,
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Get.back(result: false),
+                          child: const Text('إلغاء'),
+                        ),
+                        TextButton(
+                          onPressed: () => Get.back(result: true),
+                          child: Text(
+                            'حذف',
+                            style: AppTextStyles.button.copyWith(
+                              color: AppColors.error,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    await controller.deleteStore(store);
+                  }
+                },
+                icon: const Icon(Icons.delete_outline, color: AppColors.error),
+              ),
+            ],
           ),
         ],
       ),

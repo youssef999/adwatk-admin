@@ -1,7 +1,25 @@
 /// Display labels for Firestore status values.
-/// Filtering/search must keep using the raw [status] string.
 class StatusLabelUtils {
   StatusLabelUtils._();
+
+  /// `completed` and `delivery_completed` are treated as the same status.
+  static bool isCompleted(String status) {
+    final key = status.trim().toLowerCase();
+    return key == 'completed' || key == 'delivery_completed' || key == 'done';
+  }
+
+  /// Canonical value for filter chips (merge delivery_completed → completed).
+  static String canonicalizeForFilter(String status) {
+    if (isCompleted(status)) return 'completed';
+    return status.trim();
+  }
+
+  /// Filter match: completed filter includes delivery_completed and vice versa.
+  static bool matchesFilter(String itemStatus, String filter) {
+    if (filter == 'all') return true;
+    if (isCompleted(filter)) return isCompleted(itemStatus);
+    return itemStatus == filter;
+  }
 
   static String labelAr(String status) {
     final key = status.trim().toLowerCase();
@@ -11,6 +29,8 @@ class StatusLabelUtils {
       case 'all':
         return 'الكل';
       case 'completed':
+      case 'delivery_completed':
+      case 'done':
         return 'مكتمل';
       case 'pending':
         return 'قيد الانتظار';
@@ -31,8 +51,6 @@ class StatusLabelUtils {
         return 'قيد التنفيذ';
       case 'new':
         return 'جديد';
-      case 'done':
-        return 'مكتمل';
       case 'sent':
         return 'تم الإرسال';
       case 'request_sent':
