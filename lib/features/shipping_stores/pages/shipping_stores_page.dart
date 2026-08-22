@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../core/constants/breakpoints.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -94,28 +93,8 @@ class ShippingStoresPage extends StatelessWidget {
                             subtitle: 'جرّب كلمات بحث أخرى',
                             icon: Icons.search_off,
                           )
-                        : LayoutBuilder(
-                            builder: (context, constraints) {
-                              if (Breakpoints.isMobile(constraints.maxWidth)) {
-                                return ListView.separated(
-                                  itemCount: controller.filteredStores.length,
-                                  separatorBuilder: (context, index) =>
-                                      const SizedBox(height: AppSpacing.md),
-                                  itemBuilder: (context, index) {
-                                    return ShippingStoreMobileCard(
-                                      store:
-                                          controller.filteredStores[index],
-                                    );
-                                  },
-                                );
-                              }
-
-                              return SingleChildScrollView(
-                                child: ShippingStoresTable(
-                                  stores: controller.filteredStores,
-                                ),
-                              );
-                            },
+                        : ShippingStoresTable(
+                            stores: controller.filteredStores,
                           ),
               ),
             ],

@@ -22,238 +22,493 @@ class ShippingStoresTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<ShippingStoresController>();
+    return ListView.separated(
+      itemCount: stores.length,
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
+      itemBuilder: (context, index) {
+        return ShippingStoreListCard(store: stores[index]);
+      },
+    );
+  }
+}
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minWidth: MediaQuery.sizeOf(context).width - 320,
-          ),
-          child: DataTable(
-            headingRowColor: WidgetStateProperty.all(
-              AppColors.background,
-            ),
-            dataRowMinHeight: 80,
-            dataRowMaxHeight: 96,
-            columns: const [
-              DataColumn(label: Text('المتجر', style: AppTextStyles.h6)),
-              DataColumn(label: Text('البريد', style: AppTextStyles.h6)),
-              DataColumn(label: Text('المحفظة', style: AppTextStyles.h6)),
-              DataColumn(label: Text('حد السالب', style: AppTextStyles.h6)),
-              DataColumn(label: Text('المركبة', style: AppTextStyles.h6)),
-              DataColumn(label: Text('السائق', style: AppTextStyles.h6)),
-              DataColumn(label: Text('رقم مميز', style: AppTextStyles.h6)),
-              DataColumn(label: Text('الموقع', style: AppTextStyles.h6)),
-              DataColumn(label: Text('إجراءات', style: AppTextStyles.h6)),
+/// بطاقة متجر على صفين: هوية/محفظة ثم مركبة/موقع — بدون سكرول أفقي.
+class ShippingStoreListCard extends StatelessWidget {
+  const ShippingStoreListCard({super.key, required this.store});
+
+  final ShippimentStoreModel store;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<ShippingStoresController>();
+    final balance = controller.walletAmountFor(store);
+    final minAlert = controller.minWalletAlertFor(store);
+    final vehicleMeta = [
+      if (store.vehicleType.trim().isNotEmpty) store.vehicleType,
+      if (store.vehicleSizeType.trim().isNotEmpty) store.vehicleSizeType,
+    ].join(' · ');
+
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 720;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // الصف 1 — المتجر + المحفظة + الإجراءات
+              if (compact)
+                _CompactIdentityRow(
+                  store: store,
+                  balance: balance,
+                  minAlert: minAlert,
+                  controller: controller,
+                )
+              else
+                _WideIdentityRow(
+                  store: store,
+                  balance: balance,
+                  minAlert: minAlert,
+                  controller: controller,
+                ),
+              const SizedBox(height: AppSpacing.md),
+              const Divider(height: 1, color: AppColors.divider),
+              const SizedBox(height: AppSpacing.md),
+              // الصف 2 — المركبة + السائق + الرقم + الموقع
+              if (compact)
+                _CompactVehicleRow(store: store, vehicleMeta: vehicleMeta)
+              else
+                _WideVehicleRow(store: store, vehicleMeta: vehicleMeta),
             ],
-            rows: stores.map((store) {
-              final balance = controller.walletAmountFor(store);
-              final minAlert = controller.minWalletAlertFor(store);
-              final vehicleMeta = [
-                if (store.vehicleType.trim().isNotEmpty) store.vehicleType,
-                if (store.vehicleSizeType.trim().isNotEmpty)
-                  store.vehicleSizeType,
-              ].join(' · ');
-              return DataRow(
-                cells: [
-                  DataCell(
-                    Row(
-                      children: [
-                        _Avatar(url: store.profileImageUrl, name: store.name),
-                        const SizedBox(width: AppSpacing.sm),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 160),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                store.name.isEmpty ? '—' : store.name,
-                                style: AppTextStyles.body1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                store.profileId.isEmpty
-                                    ? '—'
-                                    : store.profileId,
-                                style: AppTextStyles.caption,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  DataCell(Text(store.email, style: AppTextStyles.body2)),
-                  DataCell(
-                    Text(
-                      _formatAmount(balance),
-                      style: AppTextStyles.body2.copyWith(
-                        color: balance < 0
-                            ? AppColors.error
-                            : AppColors.success,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      minAlert == null
-                          ? '—'
-                          : minAlert == 0
-                              ? 'مقيد (0)'
-                              : _formatAmount(minAlert),
-                      style: AppTextStyles.body2.copyWith(
-                        color: minAlert == 0
-                            ? AppColors.error
-                            : AppColors.warning,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  DataCell(
-                    Row(
-                      children: [
-                        _Avatar(
-                          url: store.vehicleImageUrl,
-                          name: store.vehicleName.isEmpty
-                              ? store.name
-                              : store.vehicleName,
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 140),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                store.vehicleName.isEmpty
-                                    ? '—'
-                                    : store.vehicleName,
-                                style: AppTextStyles.body2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                vehicleMeta.isEmpty ? '—' : vehicleMeta,
-                                style: AppTextStyles.caption.copyWith(
-                                  color: AppColors.info,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      store.vehicleDriverName.isEmpty
-                          ? '—'
-                          : store.vehicleDriverName,
-                      style: AppTextStyles.body2,
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      store.vehicleDistinctiveNumber.isEmpty
-                          ? '—'
-                          : store.vehicleDistinctiveNumber,
-                      style: AppTextStyles.body2,
-                    ),
-                  ),
-                  DataCell(
-                    store.hasLocation
-                        ? TextButton.icon(
-                            onPressed: () => MapsLauncher.openLatLng(
-                              lat: store.lat!,
-                              lng: store.lng!,
-                            ),
-                            icon: const Icon(
-                              Icons.map_outlined,
-                              size: AppIconSize.sm,
-                            ),
-                            label: Text(
-                              '${store.lat!.toStringAsFixed(4)}, '
-                              '${store.lng!.toStringAsFixed(4)}',
-                              style: AppTextStyles.caption.copyWith(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          )
-                        : Text('—', style: AppTextStyles.caption),
-                  ),
-                  DataCell(
-                    Row(
-                      children: [
-                        IconButton(
-                          tooltip: 'إرسال إشعار',
-                          onPressed: () =>
-                              controller.openSendNotification(store),
-                          icon: const Icon(
-                            Icons.notifications_active_outlined,
-                            size: AppIconSize.md,
-                          ),
-                          color: AppColors.primary,
-                        ),
-                        IconButton(
-                          tooltip: 'المحفظة والحد الأقصى',
-                          onPressed: () => _openFinance(controller, store),
-                          icon: const Icon(
-                            Icons.account_balance_wallet_outlined,
-                            color: AppColors.success,
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'تعديل',
-                          onPressed: () => _openEdit(controller, store),
-                          icon: const Icon(
-                            Icons.edit_outlined,
-                            size: AppIconSize.md,
-                          ),
-                          color: AppColors.info,
-                        ),
-                        IconButton(
-                          tooltip: 'حذف',
-                          onPressed: () => _confirmDelete(controller, store),
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            size: AppIconSize.md,
-                          ),
-                          color: AppColors.error,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class ShippingStoreMobileCard extends StatelessWidget {
+  const ShippingStoreMobileCard({super.key, required this.store});
+
+  final ShippimentStoreModel store;
+
+  @override
+  Widget build(BuildContext context) {
+    return ShippingStoreListCard(store: store);
+  }
+}
+
+class _WideIdentityRow extends StatelessWidget {
+  const _WideIdentityRow({
+    required this.store,
+    required this.balance,
+    required this.minAlert,
+    required this.controller,
+  });
+
+  final ShippimentStoreModel store;
+  final num balance;
+  final num? minAlert;
+  final ShippingStoresController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _Avatar(url: store.profileImageUrl, name: store.name, size: 48),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                store.name.isEmpty ? '—' : store.name,
+                style: AppTextStyles.h6,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                store.email.isEmpty ? '—' : store.email,
+                style: AppTextStyles.body2,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (store.profileId.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  store.profileId,
+                  style: AppTextStyles.caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
           ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        _FinanceChip(
+          label: 'المحفظة',
+          value: _formatAmount(balance),
+          color: balance < 0 ? AppColors.error : AppColors.success,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        _FinanceChip(
+          label: 'حد السالب',
+          value: _minAlertLabel(minAlert),
+          color: minAlert == 0 ? AppColors.error : AppColors.warning,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        _ActionButtons(store: store, controller: controller),
+      ],
+    );
+  }
+}
+
+class _CompactIdentityRow extends StatelessWidget {
+  const _CompactIdentityRow({
+    required this.store,
+    required this.balance,
+    required this.minAlert,
+    required this.controller,
+  });
+
+  final ShippimentStoreModel store;
+  final num balance;
+  final num? minAlert;
+  final ShippingStoresController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _Avatar(url: store.profileImageUrl, name: store.name, size: 48),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    store.name.isEmpty ? '—' : store.name,
+                    style: AppTextStyles.h6,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    store.email.isEmpty ? '—' : store.email,
+                    style: AppTextStyles.body2,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (store.profileId.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      store.profileId,
+                      style: AppTextStyles.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            _ActionButtons(store: store, controller: controller),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: [
+            _FinanceChip(
+              label: 'المحفظة',
+              value: _formatAmount(balance),
+              color: balance < 0 ? AppColors.error : AppColors.success,
+            ),
+            _FinanceChip(
+              label: 'حد السالب',
+              value: _minAlertLabel(minAlert),
+              color: minAlert == 0 ? AppColors.error : AppColors.warning,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _WideVehicleRow extends StatelessWidget {
+  const _WideVehicleRow({
+    required this.store,
+    required this.vehicleMeta,
+  });
+
+  final ShippimentStoreModel store;
+  final String vehicleMeta;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _Avatar(
+          url: store.vehicleImageUrl,
+          name: store.vehicleName.isEmpty ? 'V' : store.vehicleName,
+          size: 40,
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          flex: 2,
+          child: _MetaBlock(
+            title: store.vehicleName.isEmpty
+                ? 'مركبة غير محددة'
+                : store.vehicleName,
+            subtitle: vehicleMeta.isEmpty ? '—' : vehicleMeta,
+          ),
+        ),
+        Expanded(
+          child: _MetaBlock(
+            title: 'السائق',
+            subtitle: store.vehicleDriverName.isEmpty
+                ? '—'
+                : store.vehicleDriverName,
+          ),
+        ),
+        Expanded(
+          child: _MetaBlock(
+            title: 'رقم مميز',
+            subtitle: store.vehicleDistinctiveNumber.isEmpty
+                ? '—'
+                : store.vehicleDistinctiveNumber,
+          ),
+        ),
+        _LocationButton(store: store),
+      ],
+    );
+  }
+}
+
+class _CompactVehicleRow extends StatelessWidget {
+  const _CompactVehicleRow({
+    required this.store,
+    required this.vehicleMeta,
+  });
+
+  final ShippimentStoreModel store;
+  final String vehicleMeta;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            _Avatar(
+              url: store.vehicleImageUrl,
+              name: store.vehicleName.isEmpty ? 'V' : store.vehicleName,
+              size: 40,
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: _MetaBlock(
+                title: store.vehicleName.isEmpty
+                    ? 'مركبة غير محددة'
+                    : store.vehicleName,
+                subtitle: vehicleMeta.isEmpty ? '—' : vehicleMeta,
+              ),
+            ),
+            _LocationButton(store: store),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: _MetaBlock(
+                title: 'السائق',
+                subtitle: store.vehicleDriverName.isEmpty
+                    ? '—'
+                    : store.vehicleDriverName,
+              ),
+            ),
+            Expanded(
+              child: _MetaBlock(
+                title: 'رقم مميز',
+                subtitle: store.vehicleDistinctiveNumber.isEmpty
+                    ? '—'
+                    : store.vehicleDistinctiveNumber,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _LocationButton extends StatelessWidget {
+  const _LocationButton({required this.store});
+
+  final ShippimentStoreModel store;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!store.hasLocation) {
+      return Text('بدون موقع', style: AppTextStyles.caption);
+    }
+
+    return TextButton.icon(
+      onPressed: () => MapsLauncher.openLatLng(
+        lat: store.lat!,
+        lng: store.lng!,
+      ),
+      icon: const Icon(Icons.map_outlined, size: AppIconSize.sm),
+      label: Text(
+        '${store.lat!.toStringAsFixed(4)}, ${store.lng!.toStringAsFixed(4)}',
+        style: AppTextStyles.caption.copyWith(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
+}
 
-  String _formatAmount(num value) {
-    final text = value % 1 == 0 ? value.toInt().toString() : value.toString();
-    return '$text د.ع';
+class _FinanceChip extends StatelessWidget {
+  const _FinanceChip({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 88),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: AppTextStyles.caption.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaBlock extends StatelessWidget {
+  const _MetaBlock({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: AppTextStyles.body2.copyWith(fontWeight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: AppTextStyles.caption.copyWith(color: AppColors.info),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionButtons extends StatelessWidget {
+  const _ActionButtons({
+    required this.store,
+    required this.controller,
+  });
+
+  final ShippimentStoreModel store;
+  final ShippingStoresController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'إرسال إشعار',
+          onPressed: () => controller.openSendNotification(store),
+          icon: const Icon(
+            Icons.notifications_active_outlined,
+            size: AppIconSize.md,
+          ),
+          color: AppColors.primary,
+        ),
+        IconButton(
+          tooltip: 'المحفظة والحد الأقصى',
+          onPressed: () => _openFinance(),
+          icon: const Icon(
+            Icons.account_balance_wallet_outlined,
+            color: AppColors.success,
+          ),
+        ),
+        IconButton(
+          tooltip: 'تعديل',
+          onPressed: () => _openEdit(),
+          icon: const Icon(Icons.edit_outlined, size: AppIconSize.md),
+          color: AppColors.info,
+        ),
+        IconButton(
+          tooltip: 'حذف',
+          onPressed: () => _confirmDelete(),
+          icon: const Icon(Icons.delete_outline, size: AppIconSize.md),
+          color: AppColors.error,
+        ),
+      ],
+    );
   }
 
-  Future<void> _openFinance(
-    ShippingStoresController controller,
-    ShippimentStoreModel store,
-  ) async {
+  Future<void> _openFinance() async {
     controller.prepareFinance(store);
     await Get.dialog<bool>(
       const ShippingFinanceDialog(),
@@ -261,10 +516,7 @@ class ShippingStoresTable extends StatelessWidget {
     );
   }
 
-  Future<void> _openEdit(
-    ShippingStoresController controller,
-    ShippimentStoreModel store,
-  ) async {
+  Future<void> _openEdit() async {
     await controller.prepareEdit(store);
     await Get.dialog<bool>(
       const ShippingStoreFormDialog(),
@@ -272,10 +524,7 @@ class ShippingStoresTable extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmDelete(
-    ShippingStoresController controller,
-    ShippimentStoreModel store,
-  ) async {
+  Future<void> _confirmDelete() async {
     final confirmed = await Get.dialog<bool>(
       AlertDialog(
         title: const Text('حذف متجر الشحن', style: AppTextStyles.h5),
@@ -307,194 +556,6 @@ class ShippingStoresTable extends StatelessWidget {
     if (confirmed == true) {
       await controller.deleteStore(store);
     }
-  }
-}
-
-class ShippingStoreMobileCard extends StatelessWidget {
-  const ShippingStoreMobileCard({super.key, required this.store});
-
-  final ShippimentStoreModel store;
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = Get.find<ShippingStoresController>();
-    final balance = controller.walletAmountFor(store);
-    final minAlert = controller.minWalletAlertFor(store);
-    final vehicleMeta = [
-      if (store.vehicleType.trim().isNotEmpty) store.vehicleType,
-      if (store.vehicleSizeType.trim().isNotEmpty) store.vehicleSizeType,
-      if (store.vehicleDistinctiveNumber.trim().isNotEmpty)
-        '#${store.vehicleDistinctiveNumber}',
-    ].join(' · ');
-
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Avatar(url: store.profileImageUrl, name: store.name, size: 48),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      store.name.isEmpty ? '—' : store.name,
-                      style: AppTextStyles.h6,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(store.email, style: AppTextStyles.body2),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(store.profileId, style: AppTextStyles.caption),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'المحفظة: ${_formatAmount(balance)}',
-                      style: AppTextStyles.caption.copyWith(
-                        color:
-                            balance < 0 ? AppColors.error : AppColors.success,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      minAlert == null
-                          ? 'الحد الأقصى في السالب: —'
-                          : minAlert == 0
-                              ? 'الرصيد السالب: مقيد (حد = 0)'
-                              : 'الحد الأقصى في السالب: ${_formatAmount(minAlert)}',
-                      style: AppTextStyles.caption.copyWith(
-                        color: minAlert == 0
-                            ? AppColors.error
-                            : AppColors.warning,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              _Avatar(
-                url: store.vehicleImageUrl,
-                name: store.vehicleName.isEmpty ? 'V' : store.vehicleName,
-                size: 40,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      store.vehicleName.isEmpty
-                          ? 'مركبة غير محددة'
-                          : store.vehicleName,
-                      style: AppTextStyles.body2.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (store.vehicleDriverName.trim().isNotEmpty)
-                      Text(
-                        'السائق: ${store.vehicleDriverName}',
-                        style: AppTextStyles.caption,
-                      ),
-                    Text(
-                      vehicleMeta.isEmpty ? '—' : vehicleMeta,
-                      style: AppTextStyles.caption,
-                    ),
-                  ],
-                ),
-              ),
-              if (store.hasLocation)
-                IconButton(
-                  tooltip: 'فتح على خرائط جوجل',
-                  onPressed: () => MapsLauncher.openLatLng(
-                    lat: store.lat!,
-                    lng: store.lng!,
-                  ),
-                  icon: const Icon(Icons.map_outlined),
-                  color: AppColors.primary,
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              const Spacer(),
-              IconButton(
-                tooltip: 'المحفظة والحد الأقصى',
-                onPressed: () async {
-                  controller.prepareFinance(store);
-                  await Get.dialog<bool>(
-                    const ShippingFinanceDialog(),
-                    barrierDismissible: false,
-                  );
-                },
-                icon: const Icon(
-                  Icons.account_balance_wallet_outlined,
-                  color: AppColors.success,
-                ),
-              ),
-              IconButton(
-                onPressed: () async {
-                  await controller.prepareEdit(store);
-                  await Get.dialog<bool>(
-                    const ShippingStoreFormDialog(),
-                    barrierDismissible: false,
-                  );
-                },
-                icon: const Icon(Icons.edit_outlined, color: AppColors.info),
-              ),
-              IconButton(
-                onPressed: () async {
-                  final confirmed = await Get.dialog<bool>(
-                    AlertDialog(
-                      title: const Text(
-                        'حذف متجر الشحن',
-                        style: AppTextStyles.h5,
-                      ),
-                      content: Text(
-                        'هل تريد حذف "${store.name}"؟',
-                        style: AppTextStyles.body2,
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Get.back(result: false),
-                          child: const Text('إلغاء'),
-                        ),
-                        TextButton(
-                          onPressed: () => Get.back(result: true),
-                          child: Text(
-                            'حذف',
-                            style: AppTextStyles.button.copyWith(
-                              color: AppColors.error,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirmed == true) {
-                    await controller.deleteStore(store);
-                  }
-                },
-                icon: const Icon(Icons.delete_outline, color: AppColors.error),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatAmount(num value) {
-    final text = value % 1 == 0 ? value.toInt().toString() : value.toString();
-    return '$text د.ع';
   }
 }
 
@@ -540,4 +601,15 @@ class _Avatar extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatAmount(num value) {
+  final text = value % 1 == 0 ? value.toInt().toString() : value.toString();
+  return '$text د.ع';
+}
+
+String _minAlertLabel(num? minAlert) {
+  if (minAlert == null) return '—';
+  if (minAlert == 0) return 'مقيد (0)';
+  return _formatAmount(minAlert);
 }
