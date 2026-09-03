@@ -24,9 +24,11 @@ class ShippingStoreIdDocumentSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.primary.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.18),
+        ),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -37,15 +39,18 @@ class ShippingStoreIdDocumentSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _Header(typeLabel: store.idDocumentTypeLabel),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.sm),
+                _MetaRow(updatedAt: store.idDocumentUpdatedAt),
                 if (hasImage) ...[
+                  const SizedBox(height: AppSpacing.md),
                   _DocumentPreview(
                     url: store.idDocumentUrl,
                     onTap: () => _openViewer(context),
                   ),
+                ] else ...[
                   const SizedBox(height: AppSpacing.sm),
+                  _NoImageNote(),
                 ],
-                _MetaRow(updatedAt: store.idDocumentUpdatedAt),
               ],
             );
           }
@@ -63,24 +68,29 @@ class ShippingStoreIdDocumentSection extends StatelessWidget {
                     if (hasImage) ...[
                       const SizedBox(height: AppSpacing.sm),
                       TextButton.icon(
-                        onPressed: () => _openViewer(context),
-                        icon: const Icon(
-                          Icons.zoom_in,
-                          size: AppIconSize.sm,
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
+                        onPressed: () => _openViewer(context),
+                        icon: const Icon(Icons.zoom_in, size: AppIconSize.sm),
                         label: const Text('عرض الوثيقة بالحجم الكامل'),
                       ),
-                    ],
+                    ] else
+                      _NoImageNote(),
                   ],
                 ),
               ),
               if (hasImage) ...[
                 const SizedBox(width: AppSpacing.md),
-                _DocumentPreview(
-                  url: store.idDocumentUrl,
-                  width: 168,
-                  height: 106,
-                  onTap: () => _openViewer(context),
+                SizedBox(
+                  width: 180,
+                  child: _DocumentPreview(
+                    url: store.idDocumentUrl,
+                    width: 180,
+                    height: 114,
+                    onTap: () => _openViewer(context),
+                  ),
                 ),
               ],
             ],
@@ -239,6 +249,29 @@ class _MetaRow extends StatelessWidget {
               : 'تاريخ الرفع: ${DateFormatUtils.format(updatedAt)}',
           style: AppTextStyles.caption.copyWith(
             color: AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// يظهر عندما يوجد نوع هوية لكن لا توجد صورة مرفوعة.
+class _NoImageNote extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(
+          Icons.image_not_supported_outlined,
+          size: AppIconSize.sm,
+          color: AppColors.textDisabled,
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Text(
+          'لم يتم رفع صورة الوثيقة بعد',
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.textDisabled,
           ),
         ),
       ],

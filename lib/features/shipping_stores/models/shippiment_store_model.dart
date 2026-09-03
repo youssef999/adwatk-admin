@@ -58,10 +58,14 @@ class ShippimentStoreModel {
 
   bool get hasLocation => lat != null && lng != null;
 
+  /// Returns true if ANY identity document field is present (type, URL, or date).
   bool get hasIdDocument =>
       idDocumentType.trim().isNotEmpty ||
       idDocumentUrl.trim().isNotEmpty ||
       idDocumentUpdatedAt != null;
+
+  /// Whether the document has a viewable image URL.
+  bool get hasIdDocumentImage => idDocumentUrl.trim().isNotEmpty;
 
   String get idDocumentTypeLabel {
     switch (idDocumentType.trim().toLowerCase()) {

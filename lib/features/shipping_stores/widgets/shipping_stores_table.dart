@@ -6,6 +6,7 @@ import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/date_format_utils.dart';
 import '../../../core/utils/maps_launcher.dart';
 import '../../../core/utils/storage_url.dart';
 import '../../../shared/widgets/cards/app_card.dart';
@@ -124,7 +125,7 @@ class _WideIdentityRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Avatar(url: store.profileImageUrl, name: store.name, size: 48),
+        _Avatar(url: store.profileImageUrl, name: store.name, size: 52),
         const SizedBox(width: AppSpacing.md),
         Expanded(
           child: Column(
@@ -143,14 +144,49 @@ class _WideIdentityRow extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              if (store.profileId.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: 2,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (store.profileId.isNotEmpty)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.badge_outlined,
+                          size: AppIconSize.sm,
+                          color: AppColors.textDisabled,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          store.profileId,
+                          style: AppTextStyles.caption,
+                        ),
+                      ],
+                    ),
+                  if (store.createdAt != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.calendar_today_outlined,
+                          size: AppIconSize.sm,
+                          color: AppColors.textDisabled,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormatUtils.format(store.createdAt),
+                          style: AppTextStyles.caption,
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+              if (store.rate > 0) ...[
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  store.profileId,
-                  style: AppTextStyles.caption,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                _RatingRow(rate: store.rate),
               ],
             ],
           ),
@@ -195,7 +231,7 @@ class _CompactIdentityRow extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Avatar(url: store.profileImageUrl, name: store.name, size: 48),
+            _Avatar(url: store.profileImageUrl, name: store.name, size: 52),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -222,6 +258,19 @@ class _CompactIdentityRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                  ],
+                  if (store.createdAt != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'انضم: ${DateFormatUtils.format(store.createdAt)}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                  if (store.rate > 0) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    _RatingRow(rate: store.rate),
                   ],
                 ],
               ),
@@ -606,6 +655,43 @@ class _Avatar extends StatelessWidget {
                 ),
               ),
       ),
+    );
+  }
+}
+
+/// نجوم التقييم — تُظهر من 1 إلى 5 نجمة بناءً على القيمة.
+class _RatingRow extends StatelessWidget {
+  const _RatingRow({required this.rate});
+
+  final num rate;
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = rate.clamp(0, 5).toDouble();
+    final full = clamped.floor();
+    final half = (clamped - full) >= 0.5;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (int i = 1; i <= 5; i++)
+          Icon(
+            i <= full
+                ? Icons.star_rounded
+                : (i == full + 1 && half)
+                    ? Icons.star_half_rounded
+                    : Icons.star_outline_rounded,
+            size: 14,
+            color: AppColors.warning,
+          ),
+        const SizedBox(width: 4),
+        Text(
+          clamped.toStringAsFixed(1),
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.warning,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }
