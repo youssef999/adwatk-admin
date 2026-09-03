@@ -28,4 +28,8 @@ class FirestoreCollections {
   static const String deliveryFee = 'delivery_fee';
   static const String paymentTransactions = 'payment_transactions';
   static const String notifications = 'notifications';
+  static const String viewInHome = 'view_in_home';
+  static const String notiNotesBanner = 'noti_notes_banner';
+  /// Exact Firestore spelling (typo preserved intentionally).
+  static const String clientStoreAppCommition = 'client_store_app_commition';
 }

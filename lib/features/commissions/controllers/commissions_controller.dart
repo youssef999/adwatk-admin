@@ -37,6 +37,7 @@ class CommissionsController extends GetxController {
 
   final searchController = TextEditingController();
   final appPercentController = TextEditingController();
+  final clientStoreAppPercentController = TextEditingController();
 
   CommissionsTab activeTab = CommissionsTab.profits;
   ProfitPeriod profitPeriod = ProfitPeriod.month;
@@ -56,6 +57,7 @@ class CommissionsController extends GetxController {
   ShipmentRequestMoneyModel? selectedShipmentMoneyRequest;
   VendorMoneyRequestModel? selectedVendorMoneyRequest;
   AppCommissionModel? appCommissionSettings;
+  AppCommissionModel? clientStoreAppCommitionSettings;
 
   String searchQuery = '';
   String? workerFilter;
@@ -63,6 +65,7 @@ class CommissionsController extends GetxController {
   bool isLoadingDetail = false;
   bool isLoadingLinkedDetails = false;
   bool isSavingAppPercent = false;
+  bool isSavingClientStoreAppPercent = false;
   String? markingVendorSentId;
   String? markingShipmentSentId;
   String? actingShipmentMoneyRequestId;
@@ -246,6 +249,7 @@ class CommissionsController extends GetxController {
   void onClose() {
     searchController.dispose();
     appPercentController.dispose();
+    clientStoreAppPercentController.dispose();
     super.onClose();
   }
 
@@ -262,6 +266,7 @@ class CommissionsController extends GetxController {
         _repository.fetchShipmentMoneyRequests(),
         _repository.fetchVendorMoneyRequests(workerId: workerFilter),
         _repository.fetchAppCommissionSettings(),
+        _repository.fetchClientStoreAppCommitionSettings(),
       ]);
       appProfitTrans = results[0] as List<AppProfitTransModel>;
       vendorWallet = results[1] as List<VendorWalletModel>;
@@ -269,8 +274,11 @@ class CommissionsController extends GetxController {
       shipmentMoneyRequests = results[3] as List<ShipmentRequestMoneyModel>;
       vendorMoneyRequests = results[4] as List<VendorMoneyRequestModel>;
       appCommissionSettings = results[5] as AppCommissionModel?;
+      clientStoreAppCommitionSettings = results[6] as AppCommissionModel?;
       appPercentController.text =
           (appCommissionSettings?.value ?? 0).toString();
+      clientStoreAppPercentController.text =
+          (clientStoreAppCommitionSettings?.value ?? 0).toString();
 
       if (selectedProfitTrans != null) {
         final still =
@@ -1182,6 +1190,30 @@ class CommissionsController extends GetxController {
       AppSnackbar.error('تعذر حفظ نسبة عمولة التطبيق');
     } finally {
       isSavingAppPercent = false;
+      update([settingsId]);
+    }
+  }
+
+  Future<void> saveClientStoreAppCommitionPercent() async {
+    final raw = clientStoreAppPercentController.text.trim().replaceAll(',', '.');
+    final value = num.tryParse(raw);
+    if (value == null || value < 0 || value > 100) {
+      AppSnackbar.error('أدخل نسبة صحيحة بين 0 و 100');
+      return;
+    }
+
+    isSavingClientStoreAppPercent = true;
+    update([settingsId]);
+
+    try {
+      clientStoreAppCommitionSettings =
+          await _repository.saveClientStoreAppCommitionValue(value);
+      clientStoreAppPercentController.text = value.toString();
+      AppSnackbar.success('تم تحديث نسبة التطبيق لسوق القطع المستعملة');
+    } catch (_) {
+      AppSnackbar.error('تعذر حفظ نسبة التطبيق لسوق القطع المستعملة');
+    } finally {
+      isSavingClientStoreAppPercent = false;
       update([settingsId]);
     }
   }

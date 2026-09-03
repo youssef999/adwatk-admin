@@ -4,8 +4,10 @@ import '../../../core/constants/firestore_collections.dart';
 import '../../../core/constants/user_roles.dart';
 import '../../vendors/models/vendor_model.dart';
 import '../models/customer_model.dart';
+import '../models/customer_note_model.dart';
 import '../models/phone_lookup_model.dart';
 import '../models/user_wallet_model.dart';
+import '../models/view_in_home_model.dart';
 
 class UsersRepository {
   UsersRepository({FirebaseFirestore? firestore})
@@ -28,9 +30,85 @@ class UsersRepository {
   CollectionReference<Map<String, dynamic>> get _userWallet =>
       _firestore.collection(FirestoreCollections.userWallet);
 
+  CollectionReference<Map<String, dynamic>> get _viewInHome =>
+      _firestore.collection(FirestoreCollections.viewInHome);
+  CollectionReference<Map<String, dynamic>> get _notiNotesBanner =>
+      _firestore.collection(FirestoreCollections.notiNotesBanner);
+
   Future<List<UserWalletModel>> fetchUserWallets() async {
     final snapshot = await _userWallet.get();
     return snapshot.docs.map(UserWalletModel.fromFirestore).toList();
+  }
+
+  Future<Map<String, ViewInHomeModel>> fetchAllViewInHome() async {
+    final snapshot = await _viewInHome.get();
+    final map = <String, ViewInHomeModel>{};
+    for (final doc in snapshot.docs) {
+      final uid = doc.id.trim();
+      if (uid.isEmpty) continue;
+      map[uid] = ViewInHomeModel.fromMap(uid, doc.data());
+    }
+    return map;
+  }
+
+  Future<void> upsertViewInHome(ViewInHomeModel settings) async {
+    final snapshot = await _viewInHome.get();
+    if (snapshot.docs.isEmpty) {
+      final docId = settings.uid.trim().isEmpty ? 'global' : settings.uid.trim();
+      await _viewInHome.doc(docId).set(settings.toMap(), SetOptions(merge: true));
+      return;
+    }
+
+    final batch = _firestore.batch();
+    for (final doc in snapshot.docs) {
+      batch.set(doc.reference, settings.toMap(), SetOptions(merge: true));
+    }
+    await batch.commit();
+  }
+
+  Future<Map<String, CustomerNoteModel>> fetchLatestCustomerNotes() async {
+    final snapshot = await _notiNotesBanner.get();
+    final latestByUid = <String, CustomerNoteModel>{};
+    for (final doc in snapshot.docs) {
+      final note = CustomerNoteModel.fromFirestore(doc);
+      final uid = note.customerUid.trim();
+      if (uid.isEmpty) continue;
+      final prev = latestByUid[uid];
+      if (prev == null) {
+        latestByUid[uid] = note;
+        continue;
+      }
+      final prevTime = prev.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final nextTime = note.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      if (nextTime.isAfter(prevTime)) {
+        latestByUid[uid] = note;
+      }
+    }
+    return latestByUid;
+  }
+
+  Future<CustomerNoteModel> createCustomerNote({
+    required String customerUid,
+    required String customerEmail,
+    required String customerPhone,
+    required String title,
+    required String details,
+    String type = 'noti',
+  }) async {
+    final docRef = _notiNotesBanner.doc();
+    final note = CustomerNoteModel(
+      id: docRef.id,
+      customerUid: customerUid,
+      customerEmail: customerEmail,
+      customerPhone: customerPhone,
+      title: title,
+      details: details,
+      type: type,
+      createdAt: null,
+    );
+    await docRef.set(note.toFirestore());
+    final saved = await docRef.get();
+    return CustomerNoteModel.fromFirestore(saved);
   }
 
   Future<DocumentReference<Map<String, dynamic>>> _resolveUserWalletRef({

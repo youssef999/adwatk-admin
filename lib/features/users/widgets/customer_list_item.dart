@@ -6,10 +6,12 @@ import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/date_format_utils.dart';
 import '../../../shared/widgets/cards/app_card.dart';
 import '../controllers/users_controller.dart';
 import '../models/customer_model.dart';
 import 'customer_form_dialog.dart';
+import 'customer_note_dialog.dart';
 import 'user_wallet_dialog.dart';
 
 class CustomerListItem extends StatelessWidget {
@@ -22,6 +24,7 @@ class CustomerListItem extends StatelessWidget {
     final controller = Get.find<UsersController>();
     final walletAmount = controller.walletAmountFor(customer);
     final minAlert = controller.minWalletAlertFor(customer);
+    final latestNote = controller.latestNoteFor(customer);
 
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -83,6 +86,72 @@ class CustomerListItem extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (latestNote != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'آخر ملاحظة',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm,
+                                vertical: AppSpacing.xs,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(AppRadius.sm),
+                              ),
+                              child: Text(
+                                latestNote.type,
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          latestNote.title.isEmpty ? '—' : latestNote.title,
+                          style: AppTextStyles.body2.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          latestNote.details.isEmpty ? '—' : latestNote.details,
+                          style: AppTextStyles.caption,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          DateFormatUtils.format(latestNote.createdAt),
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textDisabled,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -121,6 +190,12 @@ class CustomerListItem extends StatelessWidget {
             color: AppColors.primary,
           ),
           IconButton(
+            tooltip: 'إضافة ملاحظة',
+            onPressed: () => _openNote(controller),
+            icon: const Icon(Icons.note_add_outlined, size: AppIconSize.md),
+            color: AppColors.secondary,
+          ),
+          IconButton(
             tooltip: 'المحفظة والحد الأقصى',
             onPressed: () => _openWallet(controller),
             icon: const Icon(
@@ -155,6 +230,14 @@ class CustomerListItem extends StatelessWidget {
     controller.prepareWalletAdjust(customer);
     await Get.dialog<bool>(
       const UserWalletDialog(),
+      barrierDismissible: false,
+    );
+  }
+
+  Future<void> _openNote(UsersController controller) async {
+    controller.prepareAddCustomerNote(customer);
+    await Get.dialog<bool>(
+      const CustomerNoteDialog(),
       barrierDismissible: false,
     );
   }

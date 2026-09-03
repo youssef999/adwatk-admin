@@ -128,77 +128,128 @@ class AppCommissionPercentCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: const Icon(
-                      Icons.percent,
-                      color: AppColors.primary,
-                      size: AppIconSize.md,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('نسبة عمولة التطبيق', style: AppTextStyles.h6),
-                        Text(
-                          'من مجموعة app_commission',
-                          style: AppTextStyles.caption,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Text(
-                    '${controller.appCommissionSettings?.value ?? '—'}%',
-                    style: AppTextStyles.h5.copyWith(color: AppColors.primary),
-                  ),
-                ],
+              _CommissionSettingBlock(
+                icon: Icons.percent,
+                iconColor: AppColors.primary,
+                title: 'نسبة عمولة التطبيق',
+                subtitle: 'من مجموعة app_commission',
+                currentValue: controller.appCommissionSettings?.value,
+                textController: controller.appPercentController,
+                isSaving: controller.isSavingAppPercent,
+                onSave: controller.saveAppCommissionPercent,
               ),
               const SizedBox(height: AppSpacing.md),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: controller.appPercentController,
-                      enabled: !controller.isSavingAppPercent,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'[0-9.,]'),
-                        ),
-                      ],
-                      style: AppTextStyles.body1,
-                      decoration: InputDecoration(
-                        labelText: 'النسبة %',
-                        hintText: 'مثال: 5',
-                        filled: true,
-                        fillColor: AppColors.background,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  AppButton(
-                    label: 'حفظ',
-                    isLoading: controller.isSavingAppPercent,
-                    onPressed: controller.saveAppCommissionPercent,
-                  ),
-                ],
+              const Divider(color: AppColors.divider, height: 1),
+              const SizedBox(height: AppSpacing.md),
+              _CommissionSettingBlock(
+                icon: Icons.storefront_outlined,
+                iconColor: AppColors.info,
+                title: 'نسبة التطبيق لسوق القطع المستعملة',
+                subtitle: 'من مجموعة client_store_app_commition',
+                currentValue: controller.clientStoreAppCommitionSettings?.value,
+                textController: controller.clientStoreAppPercentController,
+                isSaving: controller.isSavingClientStoreAppPercent,
+                onSave: controller.saveClientStoreAppCommitionPercent,
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _CommissionSettingBlock extends StatelessWidget {
+  const _CommissionSettingBlock({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.currentValue,
+    required this.textController,
+    required this.isSaving,
+    required this.onSave,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final num? currentValue;
+  final TextEditingController textController;
+  final bool isSaving;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(
+                icon,
+                color: iconColor,
+                size: AppIconSize.md,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppTextStyles.h6),
+                  Text(subtitle, style: AppTextStyles.caption),
+                ],
+              ),
+            ),
+            Text(
+              '${currentValue ?? '—'}%',
+              style: AppTextStyles.h5.copyWith(color: iconColor),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: textController,
+                enabled: !isSaving,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                    RegExp(r'[0-9.,]'),
+                  ),
+                ],
+                style: AppTextStyles.body1,
+                decoration: InputDecoration(
+                  labelText: 'النسبة %',
+                  hintText: 'مثال: 5',
+                  filled: true,
+                  fillColor: AppColors.background,
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            AppButton(
+              label: 'حفظ',
+              isLoading: isSaving,
+              onPressed: onSave,
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

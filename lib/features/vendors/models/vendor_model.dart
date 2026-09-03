@@ -14,6 +14,11 @@ class VendorModel {
     required this.shopLat,
     required this.shopLng,
     required this.specializations,
+    this.partsCategories = const [],
+    this.workType = '',
+    this.identityDocumentType = '',
+    this.identityDocumentUrl = '',
+    this.identityDocumentUpdatedAt,
     this.fcmToken,
     this.createdAt,
   });
@@ -28,16 +33,45 @@ class VendorModel {
   final double shopLat;
   final double shopLng;
   final List<String> specializations;
+  final List<String> partsCategories;
+  final String workType;
+  final String identityDocumentType;
+  final String identityDocumentUrl;
+  final DateTime? identityDocumentUpdatedAt;
   final String? fcmToken;
   final DateTime? createdAt;
 
   bool get isTestWorker => role == UserRoles.testWorker;
+
+  bool get hasIdentityDocument =>
+      identityDocumentType.trim().isNotEmpty ||
+      identityDocumentUrl.trim().isNotEmpty ||
+      identityDocumentUpdatedAt != null;
+
+  String get identityDocumentTypeLabel {
+    switch (identityDocumentType.trim().toLowerCase()) {
+      case 'national_id':
+      case 'nationalid':
+        return 'بطاقة الهوية الوطنية';
+      case 'passport':
+        return 'جواز السفر';
+      case 'residence':
+        return 'إقامة';
+      case 'driving_license':
+      case 'drivinglicense':
+        return 'رخصة القيادة';
+      default:
+        if (identityDocumentType.trim().isEmpty) return '—';
+        return identityDocumentType.trim();
+    }
+  }
 
   factory VendorModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data() ?? {};
     final specs = data['specializations'];
+    final parts = data['partsCategories'];
     return VendorModel(
       id: doc.id,
       uid: data['uid'] as String? ?? doc.id,
@@ -51,6 +85,14 @@ class VendorModel {
       specializations: specs is List
           ? specs.map((e) => e.toString()).toList()
           : const [],
+      partsCategories: parts is List
+          ? parts.map((e) => e.toString()).toList()
+          : const [],
+      workType: data['workType'] as String? ?? '',
+      identityDocumentType: data['identityDocumentType'] as String? ?? '',
+      identityDocumentUrl: data['identityDocumentUrl'] as String? ?? '',
+      identityDocumentUpdatedAt:
+          (data['identityDocumentUpdatedAt'] as Timestamp?)?.toDate(),
       fcmToken: data['fcmToken'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
     );
@@ -67,6 +109,13 @@ class VendorModel {
       'shopLat': shopLat,
       'shopLng': shopLng,
       'specializations': specializations,
+      'partsCategories': partsCategories,
+      'workType': workType.trim(),
+      'identityDocumentType': identityDocumentType.trim(),
+      'identityDocumentUrl': identityDocumentUrl.trim(),
+      if (identityDocumentUpdatedAt != null)
+        'identityDocumentUpdatedAt':
+            Timestamp.fromDate(identityDocumentUpdatedAt!),
       'fcmToken': fcmToken,
       if (includeCreatedAt) 'createdAt': FieldValue.serverTimestamp(),
     };
@@ -81,6 +130,11 @@ class VendorModel {
     double? shopLat,
     double? shopLng,
     List<String>? specializations,
+    List<String>? partsCategories,
+    String? workType,
+    String? identityDocumentType,
+    String? identityDocumentUrl,
+    DateTime? identityDocumentUpdatedAt,
     String? fcmToken,
   }) {
     return VendorModel(
@@ -94,6 +148,12 @@ class VendorModel {
       shopLat: shopLat ?? this.shopLat,
       shopLng: shopLng ?? this.shopLng,
       specializations: specializations ?? this.specializations,
+      partsCategories: partsCategories ?? this.partsCategories,
+      workType: workType ?? this.workType,
+      identityDocumentType: identityDocumentType ?? this.identityDocumentType,
+      identityDocumentUrl: identityDocumentUrl ?? this.identityDocumentUrl,
+      identityDocumentUpdatedAt:
+          identityDocumentUpdatedAt ?? this.identityDocumentUpdatedAt,
       fcmToken: fcmToken ?? this.fcmToken,
       createdAt: createdAt,
     );

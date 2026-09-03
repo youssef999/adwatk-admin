@@ -12,6 +12,7 @@ import '../controllers/vendors_controller.dart';
 import '../models/vendor_model.dart';
 import 'vendor_finance_dialog.dart';
 import 'vendor_form_dialog.dart';
+import 'vendor_identity_document_section.dart';
 
 class VendorListItem extends StatelessWidget {
   const VendorListItem({super.key, required this.vendor});
@@ -155,11 +156,55 @@ class VendorListItem extends StatelessWidget {
                   .toList(),
             ),
           ],
+          if (vendor.partsCategories.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: vendor.partsCategories
+                  .map(
+                    (category) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.info.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        border: Border.all(
+                          color: AppColors.info.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Text(
+                        category,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.info,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+          if (vendor.workType.trim().isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'نوع العمل: ${vendor.workType}',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           Text(
             'الموقع: ${vendor.shopLat.toStringAsFixed(5)}, ${vendor.shopLng.toStringAsFixed(5)}',
             style: AppTextStyles.caption,
           ),
+          if (vendor.hasIdentityDocument) ...[
+            const SizedBox(height: AppSpacing.md),
+            VendorIdentityDocumentSection(vendor: vendor),
+          ],
         ],
       ),
     );

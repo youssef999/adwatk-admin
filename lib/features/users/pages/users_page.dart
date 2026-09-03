@@ -11,6 +11,7 @@ import '../../../shared/widgets/feedback/app_error_state.dart';
 import '../../../shared/widgets/feedback/app_loader.dart';
 import '../../../shared/widgets/layout/app_scaffold.dart';
 import '../controllers/users_controller.dart';
+import '../widgets/customer_home_visibility_section.dart';
 import '../widgets/customer_form_dialog.dart';
 import '../widgets/customer_list_item.dart';
 import '../widgets/phone_lookup_form_dialog.dart';
@@ -74,6 +75,10 @@ class UsersPage extends StatelessWidget {
                   fillColor: AppColors.surface,
                 ),
               ),
+              if (controller.activeTab == UsersPageTab.customers) ...[
+                const SizedBox(height: AppSpacing.md),
+                const HomeVisibilitySection(),
+              ],
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [

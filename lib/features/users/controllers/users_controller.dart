@@ -5,8 +5,10 @@ import '../../../shared/widgets/feedback/app_snackbar.dart';
 import '../../../shared/widgets/feedback/send_notification_dialog.dart';
 import '../../../core/services/notifications_service.dart';
 import '../models/customer_model.dart';
+import '../models/customer_note_model.dart';
 import '../models/phone_lookup_model.dart';
 import '../models/user_wallet_model.dart';
+import '../models/view_in_home_model.dart';
 import '../repositories/users_repository.dart';
 
 enum UsersPageTab { customers, phoneLinks }
@@ -25,6 +27,7 @@ class UsersController extends GetxController {
   static const String formId = 'users_form';
   static const String phoneFormId = 'phone_form';
   static const String walletFormId = 'users_wallet_form';
+  static const String noteFormId = 'users_note_form';
 
   final fullNameController = TextEditingController();
   final emailController = TextEditingController();
@@ -35,12 +38,18 @@ class UsersController extends GetxController {
   final searchController = TextEditingController();
   final lookupPhoneController = TextEditingController();
   final lookupEmailController = TextEditingController();
+  final noteTitleController = TextEditingController();
+  final noteDetailsController = TextEditingController();
+  final noteTypeController = TextEditingController();
 
   UsersPageTab activeTab = UsersPageTab.customers;
   List<CustomerModel> customers = [];
   List<PhoneLookupModel> phoneLookups = [];
   List<UserWalletModel> userWallets = [];
   Map<String, num> minWalletAlerts = {};
+  ViewInHomeModel? globalViewInHome;
+  Map<String, CustomerNoteModel> latestNotesByUid = {};
+  bool isUpdatingGlobalViewInHome = false;
   String searchQuery = '';
   bool isLoading = false;
   bool isSubmitting = false;
@@ -49,6 +58,7 @@ class UsersController extends GetxController {
   CustomerModel? editingCustomer;
   CustomerModel? walletCustomer;
   PhoneLookupModel? editingPhoneLookup;
+  CustomerModel? noteCustomer;
 
   List<CustomerModel> get filteredCustomers {
     final q = searchQuery.trim().toLowerCase();
@@ -122,6 +132,23 @@ class UsersController extends GetxController {
     return minWalletAlerts[email];
   }
 
+  String _customerKey(CustomerModel customer) =>
+      customer.uid.trim().isNotEmpty ? customer.uid.trim() : customer.id.trim();
+
+  ViewInHomeModel get currentGlobalViewInHome {
+    return globalViewInHome ??
+        const ViewInHomeModel(
+          uid: 'global',
+          showStores: true,
+          showClientOffers: true,
+        );
+  }
+
+  CustomerNoteModel? latestNoteFor(CustomerModel customer) {
+    final key = _customerKey(customer);
+    return latestNotesByUid[key];
+  }
+
   @override
   void onInit() {
     super.onInit();
@@ -139,6 +166,9 @@ class UsersController extends GetxController {
     searchController.dispose();
     lookupPhoneController.dispose();
     lookupEmailController.dispose();
+    noteTitleController.dispose();
+    noteDetailsController.dispose();
+    noteTypeController.dispose();
     super.onClose();
   }
 
@@ -153,11 +183,20 @@ class UsersController extends GetxController {
         _repository.fetchPhoneLookups(),
         _repository.fetchUserWallets(),
         _repository.fetchAllUserMinWalletAlerts(),
+        _repository.fetchAllViewInHome(),
+        _repository.fetchLatestCustomerNotes(),
       ]);
       customers = results[0] as List<CustomerModel>;
       phoneLookups = results[1] as List<PhoneLookupModel>;
       userWallets = results[2] as List<UserWalletModel>;
       minWalletAlerts = results[3] as Map<String, num>;
+      final globalMap = results[4] as Map<String, ViewInHomeModel>;
+      if (globalMap.isEmpty) {
+        globalViewInHome = null;
+      } else {
+        globalViewInHome = globalMap['global'] ?? globalMap.values.first;
+      }
+      latestNotesByUid = results[5] as Map<String, CustomerNoteModel>;
     } catch (_) {
       errorMessage = 'تعذر تحميل المستخدمين. حاول مرة أخرى.';
     } finally {
@@ -473,6 +512,98 @@ class UsersController extends GetxController {
       AppSnackbar.success('تم حذف المستخدم.');
     } catch (_) {
       AppSnackbar.error('تعذر حذف المستخدم.');
+    }
+  }
+
+  void prepareAddCustomerNote(CustomerModel customer) {
+    noteCustomer = customer;
+    noteTitleController.clear();
+    noteDetailsController.clear();
+    noteTypeController.text = 'noti';
+    update([noteFormId]);
+  }
+
+  Future<bool> submitCustomerNote() async {
+    final customer = noteCustomer;
+    if (customer == null) return false;
+
+    final title = noteTitleController.text.trim();
+    final details = noteDetailsController.text.trim();
+    final type = noteTypeController.text.trim().isEmpty
+        ? 'noti'
+        : noteTypeController.text.trim();
+    final uid = _customerKey(customer);
+
+    if (uid.isEmpty) {
+      AppSnackbar.error('تعذر تحديد العميل.');
+      return false;
+    }
+    if (title.isEmpty) {
+      AppSnackbar.error('عنوان الملاحظة مطلوب.');
+      return false;
+    }
+    if (details.isEmpty) {
+      AppSnackbar.error('تفاصيل الملاحظة مطلوبة.');
+      return false;
+    }
+
+    isSubmitting = true;
+    update([noteFormId]);
+    try {
+      final note = await _repository.createCustomerNote(
+        customerUid: uid,
+        customerEmail: customer.email,
+        customerPhone: customer.phoneNumber,
+        title: title,
+        details: details,
+        type: type,
+      );
+      latestNotesByUid[uid] = note;
+      AppSnackbar.success('تم إضافة الملاحظة للعميل.');
+      update([listId]);
+      return true;
+    } catch (_) {
+      AppSnackbar.error('تعذر إضافة الملاحظة.');
+      return false;
+    } finally {
+      isSubmitting = false;
+      update([noteFormId]);
+    }
+  }
+
+  Future<void> setGlobalHomeStoresVisibility(bool value) async {
+    await _setGlobalHomeVisibility(
+      next: currentGlobalViewInHome.copyWith(showStores: value),
+      successMessage: value ? 'تم إظهار المتاجر للجميع.' : 'تم إخفاء المتاجر للجميع.',
+    );
+  }
+
+  Future<void> setGlobalHomeOffersVisibility(bool value) async {
+    await _setGlobalHomeVisibility(
+      next: currentGlobalViewInHome.copyWith(showClientOffers: value),
+      successMessage: value ? 'تم إظهار العروض للجميع.' : 'تم إخفاء العروض للجميع.',
+    );
+  }
+
+  Future<void> _setGlobalHomeVisibility({
+    required ViewInHomeModel next,
+    required String successMessage,
+  }) async {
+    final previous = globalViewInHome;
+
+    // Optimistic UI update: reflect the toggle immediately.
+    globalViewInHome = next;
+    isUpdatingGlobalViewInHome = true;
+    update([listId]);
+    try {
+      await _repository.upsertViewInHome(next);
+      AppSnackbar.success(successMessage);
+    } catch (_) {
+      globalViewInHome = previous;
+      AppSnackbar.error('تعذر تحديث إعدادات العرض.');
+    } finally {
+      isUpdatingGlobalViewInHome = false;
+      update([listId]);
     }
   }
 

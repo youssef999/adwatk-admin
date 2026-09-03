@@ -14,6 +14,7 @@ import '../controllers/shipping_stores_controller.dart';
 import '../models/shippiment_store_model.dart';
 import 'shipping_finance_dialog.dart';
 import 'shipping_store_form_dialog.dart';
+import 'shipping_store_id_document_section.dart';
 
 class ShippingStoresTable extends StatelessWidget {
   const ShippingStoresTable({super.key, required this.stores});
@@ -80,6 +81,12 @@ class ShippingStoreListCard extends StatelessWidget {
                 _CompactVehicleRow(store: store, vehicleMeta: vehicleMeta)
               else
                 _WideVehicleRow(store: store, vehicleMeta: vehicleMeta),
+              if (store.hasIdDocument) ...[
+                const SizedBox(height: AppSpacing.md),
+                const Divider(height: 1, color: AppColors.divider),
+                const SizedBox(height: AppSpacing.md),
+                ShippingStoreIdDocumentSection(store: store),
+              ],
             ],
           );
         },

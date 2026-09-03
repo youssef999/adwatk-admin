@@ -28,6 +28,8 @@ class CommissionsRepository {
 
   CollectionReference<Map<String, dynamic>> get _appCommission =>
       _firestore.collection(FirestoreCollections.appCommission);
+  CollectionReference<Map<String, dynamic>> get _clientStoreAppCommition =>
+      _firestore.collection(FirestoreCollections.clientStoreAppCommition);
 
   CollectionReference<Map<String, dynamic>> get _appProfitsTrans =>
       _firestore.collection(FirestoreCollections.appProfitsTrans);
@@ -303,6 +305,23 @@ class CommissionsRepository {
     }
 
     final doc = await _appCommission.add({'value': value});
+    return AppCommissionModel(id: doc.id, value: value);
+  }
+
+  /// Loads app cut for used-parts market (client_store_app_commition).
+  Future<AppCommissionModel?> fetchClientStoreAppCommitionSettings() async {
+    final snapshot = await _clientStoreAppCommition.limit(1).get();
+    if (snapshot.docs.isEmpty) return null;
+    return AppCommissionModel.fromFirestore(snapshot.docs.first);
+  }
+
+  Future<AppCommissionModel> saveClientStoreAppCommitionValue(num value) async {
+    final existing = await fetchClientStoreAppCommitionSettings();
+    if (existing != null) {
+      await _clientStoreAppCommition.doc(existing.id).update({'value': value});
+      return existing.copyWith(value: value);
+    }
+    final doc = await _clientStoreAppCommition.add({'value': value});
     return AppCommissionModel(id: doc.id, value: value);
   }
 

@@ -24,6 +24,9 @@ class ShippimentStoreModel {
     this.updatedAt,
     this.fcmTokenUpdatedAt,
     this.profileImageUpdatedAt,
+    this.idDocumentType = '',
+    this.idDocumentUrl = '',
+    this.idDocumentUpdatedAt,
   });
 
   final String id;
@@ -47,10 +50,35 @@ class ShippimentStoreModel {
   final DateTime? updatedAt;
   final DateTime? fcmTokenUpdatedAt;
   final DateTime? profileImageUpdatedAt;
+  final String idDocumentType;
+  final String idDocumentUrl;
+  final DateTime? idDocumentUpdatedAt;
 
   static const List<String> vehicleSizeTypes = ['small', 'medium', 'large'];
 
   bool get hasLocation => lat != null && lng != null;
+
+  bool get hasIdDocument =>
+      idDocumentType.trim().isNotEmpty ||
+      idDocumentUrl.trim().isNotEmpty ||
+      idDocumentUpdatedAt != null;
+
+  String get idDocumentTypeLabel {
+    switch (idDocumentType.trim().toLowerCase()) {
+      case 'nationalid':
+        return 'بطاقة الهوية الوطنية';
+      case 'passport':
+        return 'جواز السفر';
+      case 'residence':
+        return 'إقامة';
+      case 'drivinglicense':
+      case 'driving_license':
+        return 'رخصة القيادة';
+      default:
+        if (idDocumentType.trim().isEmpty) return '—';
+        return idDocumentType.trim();
+    }
+  }
 
   factory ShippimentStoreModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
@@ -81,6 +109,10 @@ class ShippimentStoreModel {
       fcmTokenUpdatedAt: (data['fcmTokenUpdatedAt'] as Timestamp?)?.toDate(),
       profileImageUpdatedAt:
           (data['profileImageUpdatedAt'] as Timestamp?)?.toDate(),
+      idDocumentType: data['idDocumentType'] as String? ?? '',
+      idDocumentUrl: data['idDocumentUrl'] as String? ?? '',
+      idDocumentUpdatedAt:
+          (data['idDocumentUpdatedAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -149,6 +181,9 @@ class ShippimentStoreModel {
     String? vehicleName,
     String? vehicleDriverName,
     String? vehicleType,
+    String? idDocumentType,
+    String? idDocumentUrl,
+    DateTime? idDocumentUpdatedAt,
   }) {
     return ShippimentStoreModel(
       id: id,
@@ -174,6 +209,9 @@ class ShippimentStoreModel {
       updatedAt: updatedAt,
       fcmTokenUpdatedAt: fcmTokenUpdatedAt,
       profileImageUpdatedAt: profileImageUpdatedAt,
+      idDocumentType: idDocumentType ?? this.idDocumentType,
+      idDocumentUrl: idDocumentUrl ?? this.idDocumentUrl,
+      idDocumentUpdatedAt: idDocumentUpdatedAt ?? this.idDocumentUpdatedAt,
     );
   }
 }
