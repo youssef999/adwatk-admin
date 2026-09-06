@@ -5,6 +5,8 @@ import '../../features/banners/pages/banners_page.dart';
 import '../../features/commissions/bindings/commissions_binding.dart';
 import '../../features/commissions/pages/commissions_detail_page.dart';
 import '../../features/commissions/pages/commissions_page.dart';
+import '../../features/notes/bindings/notes_binding.dart';
+import '../../features/notes/pages/notes_page.dart';
 import '../../features/requests/bindings/requests_binding.dart';
 import '../../features/requests/pages/requests_page.dart';
 import '../../features/shipping_stores/bindings/shipping_stores_binding.dart';
@@ -52,6 +54,11 @@ class AppPages {
     GetPage(
       name: AppRoutes.commissionsDetail,
       page: () => const CommissionsDetailPage(),
+    ),
+    GetPage(
+      name: AppRoutes.notes,
+      page: () => const NotesPage(),
+      binding: NotesBinding(),
     ),
   ];
 }

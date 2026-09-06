@@ -134,6 +134,11 @@ class _Sidebar extends StatelessWidget {
                     route: AppRoutes.shippingStores,
                   ),
                   _NavItem(
+                    icon: Icons.sticky_note_2_outlined,
+                    label: 'الملاحظات',
+                    route: AppRoutes.notes,
+                  ),
+                  _NavItem(
                     icon: Icons.people_outline,
                     label: 'المستخدمون',
                     route: AppRoutes.users,
@@ -240,6 +245,11 @@ class _AppDrawer extends StatelessWidget {
                       icon: Icons.local_shipping_outlined,
                       label: 'متاجر الشحن',
                       route: AppRoutes.shippingStores,
+                    ),
+                    _NavItem(
+                      icon: Icons.sticky_note_2_outlined,
+                      label: 'الملاحظات',
+                      route: AppRoutes.notes,
                     ),
                     _NavItem(
                       icon: Icons.people_outline,

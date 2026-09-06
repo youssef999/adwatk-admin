@@ -118,9 +118,27 @@ class CustomerListItem extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(AppRadius.sm),
                               ),
                               child: Text(
-                                latestNote.type,
+                                latestNote.typeLabelAr,
                                 style: AppTextStyles.caption.copyWith(
                                   color: AppColors.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm,
+                                vertical: AppSpacing.xs,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.info.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(AppRadius.sm),
+                              ),
+                              child: Text(
+                                latestNote.toLabelAr,
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.info,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),

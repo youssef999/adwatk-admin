@@ -36,11 +36,10 @@ class UsersController extends GetxController {
   final walletAmountController = TextEditingController();
   final walletMinAlertController = TextEditingController();
   final searchController = TextEditingController();
-  final lookupPhoneController = TextEditingController();
-  final lookupEmailController = TextEditingController();
   final noteTitleController = TextEditingController();
   final noteDetailsController = TextEditingController();
-  final noteTypeController = TextEditingController();
+  final lookupPhoneController = TextEditingController();
+  final lookupEmailController = TextEditingController();
 
   UsersPageTab activeTab = UsersPageTab.customers;
   List<CustomerModel> customers = [];
@@ -59,6 +58,8 @@ class UsersController extends GetxController {
   CustomerModel? walletCustomer;
   PhoneLookupModel? editingPhoneLookup;
   CustomerModel? noteCustomer;
+  String noteTo = NoteAudience.clients;
+  String noteType = NoteType.noti;
 
   List<CustomerModel> get filteredCustomers {
     final q = searchQuery.trim().toLowerCase();
@@ -168,7 +169,6 @@ class UsersController extends GetxController {
     lookupEmailController.dispose();
     noteTitleController.dispose();
     noteDetailsController.dispose();
-    noteTypeController.dispose();
     super.onClose();
   }
 
@@ -519,7 +519,18 @@ class UsersController extends GetxController {
     noteCustomer = customer;
     noteTitleController.clear();
     noteDetailsController.clear();
-    noteTypeController.text = 'noti';
+    noteType = NoteType.noti;
+    noteTo = NoteAudience.clients;
+    update([noteFormId]);
+  }
+
+  void setNoteTo(String value) {
+    noteTo = NoteAudience.normalize(value);
+    update([noteFormId]);
+  }
+
+  void setNoteType(String value) {
+    noteType = NoteType.normalize(value);
     update([noteFormId]);
   }
 
@@ -529,9 +540,6 @@ class UsersController extends GetxController {
 
     final title = noteTitleController.text.trim();
     final details = noteDetailsController.text.trim();
-    final type = noteTypeController.text.trim().isEmpty
-        ? 'noti'
-        : noteTypeController.text.trim();
     final uid = _customerKey(customer);
 
     if (uid.isEmpty) {
@@ -556,10 +564,10 @@ class UsersController extends GetxController {
         customerPhone: customer.phoneNumber,
         title: title,
         details: details,
-        type: type,
+        type: noteType,
+        to: noteTo,
       );
       latestNotesByUid[uid] = note;
-      AppSnackbar.success('تم إضافة الملاحظة للعميل.');
       update([listId]);
       return true;
     } catch (_) {

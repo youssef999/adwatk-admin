@@ -93,7 +93,8 @@ class UsersRepository {
     required String customerPhone,
     required String title,
     required String details,
-    String type = 'noti',
+    String type = NoteType.noti,
+    String to = NoteAudience.clients,
   }) async {
     final docRef = _notiNotesBanner.doc();
     final note = CustomerNoteModel(
@@ -103,7 +104,8 @@ class UsersRepository {
       customerPhone: customerPhone,
       title: title,
       details: details,
-      type: type,
+      type: NoteType.normalize(type),
+      to: NoteAudience.normalize(to),
       createdAt: null,
     );
     await docRef.set(note.toFirestore());

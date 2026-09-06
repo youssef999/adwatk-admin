@@ -9,25 +9,19 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/feedback/app_snackbar.dart';
 import '../../../shared/widgets/inputs/app_text_field.dart';
-import '../../notes/models/note_audience.dart';
-import '../../notes/models/note_type.dart';
-import '../controllers/users_controller.dart';
+import '../controllers/notes_controller.dart';
+import '../models/note_audience.dart';
+import '../models/note_type.dart';
 
-class CustomerNoteDialog extends StatelessWidget {
-  const CustomerNoteDialog({super.key});
+class NoteFormDialog extends StatelessWidget {
+  const NoteFormDialog({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return GetBuilder<UsersController>(
-      id: UsersController.noteFormId,
+    return GetBuilder<NotesController>(
+      id: NotesController.formId,
       builder: (controller) {
-        final customer = controller.noteCustomer;
         final submitting = controller.isSubmitting;
-        final customerLabel = customer == null
-            ? '—'
-            : (customer.fullName.isNotEmpty
-                ? customer.fullName
-                : customer.email);
 
         return Dialog(
           shape: RoundedRectangleBorder(
@@ -45,7 +39,7 @@ class CustomerNoteDialog extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'إضافة ملاحظة للعميل',
+                            'إضافة ملاحظة',
                             style: AppTextStyles.h4,
                           ),
                         ),
@@ -55,22 +49,17 @@ class CustomerNoteDialog extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      customerLabel,
-                      style: AppTextStyles.caption,
-                    ),
                     const SizedBox(height: AppSpacing.md),
                     AppTextField(
                       label: 'العنوان (title)',
-                      controller: controller.noteTitleController,
+                      controller: controller.titleController,
                       hint: 'مثال: ملاحظة مهمة',
                       enabled: !submitting,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     AppTextField(
                       label: 'التفاصيل (details)',
-                      controller: controller.noteDetailsController,
+                      controller: controller.detailsController,
                       hint: 'اكتب الملاحظة هنا',
                       maxLines: 4,
                       enabled: !submitting,
@@ -165,15 +154,14 @@ class CustomerNoteDialog extends StatelessWidget {
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: AppButton(
-                            label: 'حفظ الملاحظة',
+                            label: 'حفظ',
                             icon: Icons.note_add_outlined,
                             isExpanded: true,
                             isLoading: submitting,
                             onPressed: submitting
                                 ? null
                                 : () async {
-                                    final ok =
-                                        await controller.submitCustomerNote();
+                                    final ok = await controller.submitNote();
                                     if (!ok) return;
                                     Get.back(result: true);
                                     AppSnackbar.success(

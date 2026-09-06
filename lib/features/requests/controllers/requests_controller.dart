@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_radius.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/status_label_utils.dart';
+import '../../../shared/widgets/feedback/app_snackbar.dart';
 import '../../commissions/models/provider_commission_model.dart';
 import '../../shipping_stores/models/shippiment_store_model.dart';
 import '../models/accepted_offer_model.dart';
@@ -257,6 +262,105 @@ class RequestsController extends GetxController {
     relationsError = null;
     isLoadingRelations = false;
     update([listId, detailId]);
+  }
+
+  Future<void> confirmDeleteSelectedRequest() async {
+    final request = selectedRequest;
+    if (request == null) return;
+    final confirmed = await _showDangerousDeleteDialog(
+      title: 'حذف طلب',
+      itemLabel: request.partName.isEmpty ? 'هذا الطلب' : request.partName,
+    );
+    if (confirmed != true) return;
+
+    try {
+      await _repository.deleteRequest(request.id);
+      requests.removeWhere((r) => r.id == request.id);
+      clearSelection();
+      update([listId, detailId]);
+      AppSnackbar.success('تم حذف الطلب.');
+    } catch (_) {
+      AppSnackbar.error('تعذر حذف الطلب.');
+    }
+  }
+
+  Future<void> confirmDeleteSelectedSalePart() async {
+    final part = selectedSalePart;
+    if (part == null) return;
+    final confirmed = await _showDangerousDeleteDialog(
+      title: 'حذف قطعة للبيع',
+      itemLabel: part.partName.isEmpty ? 'هذه القطعة' : part.partName,
+    );
+    if (confirmed != true) return;
+
+    try {
+      await _repository.deleteSalePart(part.id);
+      saleParts.removeWhere((p) => p.id == part.id);
+      clearSelection();
+      update([listId, detailId]);
+      AppSnackbar.success('تم حذف القطعة.');
+    } catch (_) {
+      AppSnackbar.error('تعذر حذف القطعة.');
+    }
+  }
+
+  Future<bool?> _showDangerousDeleteDialog({
+    required String title,
+    required String itemLabel,
+  }) {
+    return Get.dialog<bool>(
+      AlertDialog(
+        title: Text(title, style: AppTextStyles.h5),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'هل تريد حذف "$itemLabel"؟',
+              style: AppTextStyles.body1,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(
+                  color: AppColors.error.withValues(alpha: 0.35),
+                ),
+              ),
+              child: Text(
+                'تحذير مهم: لا يتم الحذف إلا لبيانات تجريبية أو طلب خاطئ فقط. '
+                'أي حذف لبيانات حقيقية قد يسبب خطرًا على النظام وارتباطات الطلبات والعروض.',
+                style: AppTextStyles.body2.copyWith(
+                  color: AppColors.error,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: Text(
+              'إلغاء',
+              style: AppTextStyles.button.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: true),
+            child: Text(
+              'نعم، احذف',
+              style: AppTextStyles.button.copyWith(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
   }
 
   Future<void> _loadRelations(String requestId) async {

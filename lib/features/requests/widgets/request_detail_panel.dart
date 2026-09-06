@@ -54,6 +54,21 @@ class RequestDetailPanel extends StatelessWidget {
                   label: const Text('رجوع للقائمة'),
                 ),
               ),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: controller.confirmDeleteSelectedRequest,
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: AppIconSize.md,
+                  color: AppColors.error,
+                ),
+                label: Text(
+                  'حذف الطلب',
+                  style: AppTextStyles.button.copyWith(color: AppColors.error),
+                ),
+              ),
+            ),
             Expanded(
               child: ListView(
                 children: [

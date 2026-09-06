@@ -185,4 +185,16 @@ class RequestsRepository {
     }
     return result;
   }
+
+  Future<void> deleteRequest(String id) async {
+    final trimmed = id.trim();
+    if (trimmed.isEmpty) return;
+    await _requests.doc(trimmed).delete();
+  }
+
+  Future<void> deleteSalePart(String id) async {
+    final trimmed = id.trim();
+    if (trimmed.isEmpty) return;
+    await _saleParts.doc(trimmed).delete();
+  }
 }
