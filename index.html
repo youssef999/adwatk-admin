@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/adwatk-admin/">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="ادواتك — لوحة التحكم للوساطة في ادوات السيارات">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="ادواتك">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>ادواتك — لوحة التحكم</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    @font-face {
+      font-family: 'Cairo';
+      src: url('fonts/Cairo.ttf') format('truetype');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    html, body {
+      font-family: 'Cairo', sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: linear-gradient(180deg, #FFF6EC 0%, #F5F5F5 100%);
+    }
+
+    .boot {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: #3D3D3D;
+    }
+
+    .boot img {
+      width: 132px;
+      height: 132px;
+      object-fit: contain;
+      border-radius: 24px;
+      box-shadow: 0 12px 32px rgba(47, 47, 47, 0.12);
+      background: #fff;
+    }
+
+    .boot .title {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .boot .subtitle {
+      font-size: 13px;
+      color: #F08628;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .boot .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid #E5E5E5;
+      border-top-color: #F08628;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-top: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="boot" id="boot-screen">
+    <img src="favicon.png" alt="ادواتك">
+    <p class="title">ادواتك</p>
+    <p class="subtitle">لوحة التحكم</p>
+    <div class="spinner"></div>
+  </div>
+
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var boot = document.getElementById('boot-screen');
+      if (boot) boot.remove();
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
