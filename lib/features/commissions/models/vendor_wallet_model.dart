@@ -54,8 +54,11 @@ class VendorWalletModel {
   bool get isSent => status.trim().toLowerCase() == 'sent';
   bool get isPending => status.trim().toLowerCase() == 'pending';
 
-  /// `done` and `request_sent` can be converted to `sent`.
-  bool get canMarkAsSent => isDone || isRequestSent;
+  /// Negative rows are a debt owed to the app, not a payout.
+  bool get isDebt => amount < 0;
+
+  /// `done` and `request_sent` can be converted to `sent` (payouts only).
+  bool get canMarkAsSent => (isDone || isRequestSent) && !isDebt;
 
   /// Lower = higher list priority (action needed first).
   int get listPriority {

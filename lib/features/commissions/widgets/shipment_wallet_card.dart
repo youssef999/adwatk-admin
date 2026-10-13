@@ -28,7 +28,7 @@ class ShipmentWalletCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showMarkSent = entry.isDone && onMarkSent != null;
+    final showMarkSent = entry.canMarkAsSent && onMarkSent != null;
     final accent = _accentColor(entry);
     final amountColor =
         entry.amount < 0 ? AppColors.error : accent;
@@ -165,6 +165,9 @@ class ShipmentWalletCard extends StatelessWidget {
   }
 
   static String? _statusHint(ShipmentWalletModel entry) {
+    if (entry.isDone && entry.isDebt) {
+      return 'مديونية على المندوب — تُسدَّد من تطبيق الشحن';
+    }
     if (entry.isDone) return 'محسوب في الإجمالي — يمكن تحويله إلى sent';
     if (entry.isPending) return 'قيد الانتظار — غير محسوبة في الإجمالي';
     if (entry.isSent) return 'تم الإرسال — غير محسوبة في الإجمالي';

@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 
+import '../../auth/repositories/auth_repository.dart';
 import '../controllers/shipping_stores_controller.dart';
 import '../repositories/shipping_stores_repository.dart';
 
@@ -10,6 +11,7 @@ class ShippingStoresBinding extends Bindings {
     Get.lazyPut<ShippingStoresController>(
       () => ShippingStoresController(
         repository: Get.find<ShippingStoresRepository>(),
+        canManageAppCommission: Get.find<AuthRepository>().isAdmin,
       ),
     );
   }

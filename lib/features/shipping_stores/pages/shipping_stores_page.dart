@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/constants/breakpoints.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -11,6 +12,7 @@ import '../../../shared/widgets/feedback/app_loader.dart';
 import '../../../shared/widgets/layout/app_scaffold.dart';
 import '../controllers/shipping_stores_controller.dart';
 import '../widgets/delivery_fee_card.dart';
+import '../widgets/shipment_app_commission_card.dart';
 import '../widgets/shipping_store_form_dialog.dart';
 import '../widgets/shipping_stores_table.dart';
 
@@ -48,7 +50,31 @@ class ShippingStoresPage extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const DeliveryFeeCard(),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  if (!controller.canManageAppCommission) {
+                    return const DeliveryFeeCard();
+                  }
+                  if (!Breakpoints.isDesktop(constraints.maxWidth)) {
+                    return const Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DeliveryFeeCard(),
+                        SizedBox(height: AppSpacing.md),
+                        ShipmentAppCommissionCard(),
+                      ],
+                    );
+                  }
+                  return const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: DeliveryFeeCard()),
+                      SizedBox(width: AppSpacing.md),
+                      Expanded(child: ShipmentAppCommissionCard()),
+                    ],
+                  );
+                },
+              ),
               const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: controller.searchController,

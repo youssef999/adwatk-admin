@@ -31,7 +31,9 @@ class CommissionsPage extends StatelessWidget {
     });
 
     return AppScaffold(
-      title: 'العمولات والأرباح',
+      title: controller.shippingOnly
+          ? 'معاملات وسحوبات الشحن'
+          : 'العمولات والأرباح',
       actions: [
         IconButton(
           tooltip: 'تحديث',
@@ -112,8 +114,10 @@ class _CommissionsFullWidthBody extends StatelessWidget {
             ),
           ),
         ],
-        const AppCommissionPercentCard(),
-        const SizedBox(height: AppSpacing.md),
+        if (!controller.shippingOnly) ...[
+          const AppCommissionPercentCard(),
+          const SizedBox(height: AppSpacing.md),
+        ],
         TextField(
           controller: controller.searchController,
           onChanged: controller.onSearchChanged,
@@ -142,20 +146,23 @@ class _CommissionsFullWidthBody extends StatelessWidget {
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [
-              _TabChip(
-                label: 'أرباح التطبيق',
-                count: controller.profitTransactions.length,
-                selected: controller.activeTab == CommissionsTab.profits,
-                onTap: () => controller.setTab(CommissionsTab.profits),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              _TabChip(
-                label: 'أرباح التجار',
-                count: controller.filteredVendorWallet.length,
-                selected: controller.activeTab == CommissionsTab.vendorWallet,
-                onTap: () => controller.setTab(CommissionsTab.vendorWallet),
-              ),
-              const SizedBox(width: AppSpacing.sm),
+              if (!controller.shippingOnly) ...[
+                _TabChip(
+                  label: 'أرباح التطبيق',
+                  count: controller.profitTransactions.length,
+                  selected: controller.activeTab == CommissionsTab.profits,
+                  onTap: () => controller.setTab(CommissionsTab.profits),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _TabChip(
+                  label: 'أرباح التجار',
+                  count: controller.filteredVendorWallet.length,
+                  selected:
+                      controller.activeTab == CommissionsTab.vendorWallet,
+                  onTap: () => controller.setTab(CommissionsTab.vendorWallet),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+              ],
               _TabChip(
                 label: 'شركات الشحن',
                 count: controller.filteredShipmentWallet.length,
@@ -172,15 +179,17 @@ class _CommissionsFullWidthBody extends StatelessWidget {
                 onTap: () =>
                     controller.setTab(CommissionsTab.shipmentMoneyRequests),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              _TabChip(
-                label: 'طلبات سحب التجار',
-                count: controller.filteredVendorMoneyRequests.length,
-                selected: controller.activeTab ==
-                    CommissionsTab.vendorMoneyRequests,
-                onTap: () =>
-                    controller.setTab(CommissionsTab.vendorMoneyRequests),
-              ),
+              if (!controller.shippingOnly) ...[
+                const SizedBox(width: AppSpacing.sm),
+                _TabChip(
+                  label: 'طلبات سحب التجار',
+                  count: controller.filteredVendorMoneyRequests.length,
+                  selected: controller.activeTab ==
+                      CommissionsTab.vendorMoneyRequests,
+                  onTap: () =>
+                      controller.setTab(CommissionsTab.vendorMoneyRequests),
+                ),
+              ],
             ],
           ),
         ),
@@ -427,7 +436,7 @@ class _ShipmentWalletList extends StatelessWidget {
                       isMarkingSent:
                           controller.markingShipmentSentId == item.id,
                       onTap: () => controller.selectShipmentWallet(item),
-                      onMarkSent: item.isDone
+                      onMarkSent: item.canMarkAsSent
                           ? () => controller
                               .confirmMarkShipmentWalletSent(item)
                           : null,

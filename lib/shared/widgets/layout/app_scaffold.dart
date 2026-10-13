@@ -8,6 +8,8 @@ import '../../../core/theme/app_icons.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../features/auth/controllers/auth_controller.dart';
+import '../../../features/auth/repositories/auth_repository.dart';
 import '../branding/app_logo.dart';
 
 class AppScaffold extends StatelessWidget {
@@ -111,45 +113,7 @@ class _Sidebar extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               padding: EdgeInsets.only(bottom: AppSpacing.lg),
-              child: Column(
-                children: [
-                  _NavItem(
-                    icon: Icons.image_outlined,
-                    label: 'البنرات',
-                    route: AppRoutes.banners,
-                  ),
-                  _NavItem(
-                    icon: Icons.assignment_outlined,
-                    label: 'الطلبات',
-                    route: AppRoutes.requests,
-                  ),
-                  _NavItem(
-                    icon: Icons.payments_outlined,
-                    label: 'العمولات والأرباح',
-                    route: AppRoutes.commissions,
-                  ),
-                  _NavItem(
-                    icon: Icons.local_shipping_outlined,
-                    label: 'متاجر الشحن',
-                    route: AppRoutes.shippingStores,
-                  ),
-                  _NavItem(
-                    icon: Icons.sticky_note_2_outlined,
-                    label: 'الملاحظات',
-                    route: AppRoutes.notes,
-                  ),
-                  _NavItem(
-                    icon: Icons.people_outline,
-                    label: 'المستخدمون',
-                    route: AppRoutes.users,
-                  ),
-                  _NavItem(
-                    icon: Icons.storefront_outlined,
-                    label: 'البائعون',
-                    route: AppRoutes.vendors,
-                  ),
-                ],
-              ),
+              child: _NavItems(),
             ),
           ),
           _SidebarFooter(),
@@ -195,15 +159,43 @@ class _SidebarFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Get.find<AuthRepository>();
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      child: Text(
-        'ادواتك © ${DateTime.now().year}',
-        textAlign: TextAlign.center,
-        style: AppTextStyles.caption,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (auth.isModerator) ...[
+            Text(
+              auth.moderatorName.isEmpty
+                  ? 'حساب مشرف شحن'
+                  : 'مشرف شحن: ${auth.moderatorName}',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.primaryDark,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+          ],
+          TextButton.icon(
+            onPressed: () => Get.find<AuthController>().signOut(),
+            icon: const Icon(Icons.logout, size: AppIconSize.md, color: AppColors.error),
+            label: Text(
+              'تسجيل الخروج',
+              style: AppTextStyles.body1.copyWith(color: AppColors.error),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'ادواتك © ${DateTime.now().year}',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.caption,
+          ),
+        ],
       ),
     );
   }
@@ -223,52 +215,83 @@ class _AppDrawer extends StatelessWidget {
             Divider(height: 1),
             SizedBox(height: AppSpacing.sm),
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _NavItem(
-                      icon: Icons.image_outlined,
-                      label: 'البنرات',
-                      route: AppRoutes.banners,
-                    ),
-                    _NavItem(
-                      icon: Icons.assignment_outlined,
-                      label: 'الطلبات',
-                      route: AppRoutes.requests,
-                    ),
-                    _NavItem(
-                      icon: Icons.payments_outlined,
-                      label: 'العمولات والأرباح',
-                      route: AppRoutes.commissions,
-                    ),
-                    _NavItem(
-                      icon: Icons.local_shipping_outlined,
-                      label: 'متاجر الشحن',
-                      route: AppRoutes.shippingStores,
-                    ),
-                    _NavItem(
-                      icon: Icons.sticky_note_2_outlined,
-                      label: 'الملاحظات',
-                      route: AppRoutes.notes,
-                    ),
-                    _NavItem(
-                      icon: Icons.people_outline,
-                      label: 'المستخدمون',
-                      route: AppRoutes.users,
-                    ),
-                    _NavItem(
-                      icon: Icons.storefront_outlined,
-                      label: 'البائعون',
-                      route: AppRoutes.vendors,
-                    ),
-                  ],
-                ),
-              ),
+              child: SingleChildScrollView(child: _NavItems()),
             ),
             _SidebarFooter(),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Navigation entries for the signed-in role. Moderators only get the
+/// shipping sections; the admin also gets moderators management.
+class _NavItems extends StatelessWidget {
+  const _NavItems();
+
+  @override
+  Widget build(BuildContext context) {
+    if (Get.find<AuthRepository>().isModerator) {
+      return const Column(
+        children: [
+          _NavItem(
+            icon: Icons.local_shipping_outlined,
+            label: 'متاجر الشحن',
+            route: AppRoutes.shippingStores,
+          ),
+          _NavItem(
+            icon: Icons.payments_outlined,
+            label: 'معاملات وسحوبات الشحن',
+            route: AppRoutes.commissions,
+          ),
+        ],
+      );
+    }
+
+    return const Column(
+      children: [
+        _NavItem(
+          icon: Icons.image_outlined,
+          label: 'البنرات',
+          route: AppRoutes.banners,
+        ),
+        _NavItem(
+          icon: Icons.assignment_outlined,
+          label: 'الطلبات',
+          route: AppRoutes.requests,
+        ),
+        _NavItem(
+          icon: Icons.payments_outlined,
+          label: 'العمولات والأرباح',
+          route: AppRoutes.commissions,
+        ),
+        _NavItem(
+          icon: Icons.local_shipping_outlined,
+          label: 'متاجر الشحن',
+          route: AppRoutes.shippingStores,
+        ),
+        _NavItem(
+          icon: Icons.sticky_note_2_outlined,
+          label: 'الملاحظات',
+          route: AppRoutes.notes,
+        ),
+        _NavItem(
+          icon: Icons.people_outline,
+          label: 'المستخدمون',
+          route: AppRoutes.users,
+        ),
+        _NavItem(
+          icon: Icons.storefront_outlined,
+          label: 'البائعون',
+          route: AppRoutes.vendors,
+        ),
+        _NavItem(
+          icon: Icons.admin_panel_settings_outlined,
+          label: 'المشرفون',
+          route: AppRoutes.moderators,
+        ),
+      ],
     );
   }
 }

@@ -26,10 +26,24 @@ enum CommissionsTab {
 }
 
 class CommissionsController extends GetxController {
-  CommissionsController({CommissionsRepository? repository})
-      : _repository = repository ?? CommissionsRepository();
+  CommissionsController({
+    CommissionsRepository? repository,
+    this.shippingOnly = false,
+  })  : _repository = repository ?? CommissionsRepository(),
+        activeTab = shippingOnly
+            ? CommissionsTab.shipmentWallet
+            : CommissionsTab.profits;
 
   final CommissionsRepository _repository;
+
+  /// Moderators only see courier wallets and withdrawal requests; app
+  /// profits, vendor data and commission settings are never loaded.
+  final bool shippingOnly;
+
+  static const List<CommissionsTab> shippingTabs = [
+    CommissionsTab.shipmentWallet,
+    CommissionsTab.shipmentMoneyRequests,
+  ];
 
   static const String listId = 'commissions_list';
   static const String detailId = 'commissions_detail';
@@ -39,7 +53,7 @@ class CommissionsController extends GetxController {
   final appPercentController = TextEditingController();
   final clientStoreAppPercentController = TextEditingController();
 
-  CommissionsTab activeTab = CommissionsTab.profits;
+  CommissionsTab activeTab;
   ProfitPeriod profitPeriod = ProfitPeriod.month;
   ProfitPeriod vendorProfitPeriod = ProfitPeriod.month;
   ProfitPeriod shipmentProfitPeriod = ProfitPeriod.month;
@@ -258,6 +272,11 @@ class CommissionsController extends GetxController {
     errorMessage = null;
     update([listId, detailId, settingsId]);
 
+    if (shippingOnly) {
+      await _loadShippingOnly();
+      return;
+    }
+
     try {
       final results = await Future.wait([
         _repository.fetchAppProfitTransactions(),
@@ -340,8 +359,44 @@ class CommissionsController extends GetxController {
     }
   }
 
+  Future<void> _loadShippingOnly() async {
+    try {
+      final results = await Future.wait([
+        _repository.fetchShipmentWalletEntries(),
+        _repository.fetchShipmentMoneyRequests(),
+      ]);
+      shipmentWallet = results[0] as List<ShipmentWalletModel>;
+      shipmentMoneyRequests = results[1] as List<ShipmentRequestMoneyModel>;
+
+      final walletId = selectedShipmentWallet?.id;
+      final requestId = selectedShipmentMoneyRequest?.id;
+      if (walletId != null) {
+        final match = shipmentWallet.where((e) => e.id == walletId);
+        if (match.isEmpty) {
+          clearSelection();
+        } else {
+          selectedShipmentWallet = match.first;
+        }
+      }
+      if (requestId != null) {
+        final match = shipmentMoneyRequests.where((r) => r.id == requestId);
+        if (match.isEmpty) {
+          clearSelection();
+        } else {
+          selectedShipmentMoneyRequest = match.first;
+        }
+      }
+    } catch (_) {
+      errorMessage = 'تعذر تحميل معاملات الشحن.';
+    } finally {
+      isLoading = false;
+      update([listId, detailId, settingsId]);
+    }
+  }
+
   void setTab(CommissionsTab tab) {
     if (activeTab == tab) return;
+    if (shippingOnly && !shippingTabs.contains(tab)) return;
     activeTab = tab;
     clearSelection();
     update([listId, detailId]);
@@ -1006,7 +1061,7 @@ class CommissionsController extends GetxController {
   Future<void> confirmMarkShipmentWalletSent(
     ShipmentWalletModel entry,
   ) async {
-    if (!entry.isDone || markingShipmentSentId != null) return;
+    if (!entry.canMarkAsSent || markingShipmentSentId != null) return;
 
     final company = entry.shipmentCompanyName.isEmpty
         ? 'شركة الشحن'
@@ -1148,7 +1203,7 @@ class CommissionsController extends GetxController {
   }
 
   Future<void> markShipmentWalletAsSent(ShipmentWalletModel entry) async {
-    if (!entry.isDone) return;
+    if (!entry.canMarkAsSent) return;
 
     markingShipmentSentId = entry.id;
     update([listId, detailId]);

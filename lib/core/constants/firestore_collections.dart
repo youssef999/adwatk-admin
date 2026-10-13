@@ -26,6 +26,12 @@ class FirestoreCollections {
   static const String shipmentMinWalletAlert = 'shipment_min_wallet_alert';
   static const String userWallet = 'user_wallet';
   static const String deliveryFee = 'delivery_fee';
+  /// Shipping moderators managed by the admin (synced to Firebase Auth).
+  static const String moderators = 'moderators';
+  /// Courier app-commission settings (`in_city` / `out_city`).
+  /// Exact Firestore spelling (typo preserved intentionally).
+  static const String appCommissionFromShipments =
+      'app_commission_shipemnt_values';
   static const String paymentTransactions = 'payment_transactions';
   static const String notifications = 'notifications';
   static const String viewInHome = 'view_in_home';

@@ -15,8 +15,13 @@ class AppTextField extends StatelessWidget {
     this.inputFormatters,
     this.validator,
     this.onChanged,
+    this.onSubmitted,
     this.enabled = true,
     this.maxLines = 1,
+    this.obscureText = false,
+    this.suffixIcon,
+    this.textInputAction,
+    this.autofillHints,
   });
 
   final String label;
@@ -26,8 +31,13 @@ class AppTextField extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final String? Function(String?)? validator;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
   final bool enabled;
   final int maxLines;
+  final bool obscureText;
+  final Widget? suffixIcon;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
 
   @override
   Widget build(BuildContext context) {
@@ -42,14 +52,19 @@ class AppTextField extends StatelessWidget {
           inputFormatters: inputFormatters,
           validator: validator,
           onChanged: onChanged,
+          onFieldSubmitted: onSubmitted,
           enabled: enabled,
-          maxLines: maxLines,
+          maxLines: obscureText ? 1 : maxLines,
+          obscureText: obscureText,
+          textInputAction: textInputAction,
+          autofillHints: autofillHints,
           style: AppTextStyles.body1,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: AppTextStyles.body2,
             filled: true,
             fillColor: enabled ? AppColors.surface : AppColors.background,
+            suffixIcon: suffixIcon,
           ),
         ),
       ],

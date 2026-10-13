@@ -1,6 +1,7 @@
 class AppRoutes {
   AppRoutes._();
 
+  static const String login = '/login';
   static const String banners = '/banners';
   static const String users = '/users';
   static const String vendors = '/vendors';
@@ -9,4 +10,5 @@ class AppRoutes {
   static const String commissions = '/commissions';
   static const String commissionsDetail = '/commissions/detail';
   static const String notes = '/notes';
+  static const String moderators = '/moderators';
 }

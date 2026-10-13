@@ -341,7 +341,7 @@ class _ShipmentWalletDetail extends StatelessWidget {
         ShipmentWalletCard(
           entry: e,
           isMarkingSent: controller.markingShipmentSentId == e.id,
-          onMarkSent: e.isDone
+          onMarkSent: e.canMarkAsSent
               ? () => controller.confirmMarkShipmentWalletSent(e)
               : null,
         ),

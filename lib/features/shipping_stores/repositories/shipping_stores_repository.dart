@@ -7,6 +7,7 @@ import '../../../core/constants/firestore_collections.dart';
 import '../../../core/utils/image_compressor.dart';
 import '../../../core/utils/storage_url.dart';
 import '../models/delivery_fee_model.dart';
+import '../models/shipment_app_commission_model.dart';
 import '../models/shippiment_store_model.dart';
 
 class ShippingStoresRepository {
@@ -30,6 +31,9 @@ class ShippingStoresRepository {
 
   CollectionReference<Map<String, dynamic>> get _shipmentsWallet =>
       _firestore.collection(FirestoreCollections.shipmentsWallet);
+
+  CollectionReference<Map<String, dynamic>> get _appCommissionFromShipments =>
+      _firestore.collection(FirestoreCollections.appCommissionFromShipments);
 
   /// Sum of `shipments_wallet.amount` where `status == done`, keyed by company id.
   Future<Map<String, num>> fetchShipmentWalletBalances() async {
@@ -111,6 +115,31 @@ class ShippingStoresRepository {
           model.toFirestore(),
           SetOptions(merge: true),
         );
+    return model;
+  }
+
+  /// First (only) settings doc in `app_commission_shipemnt_values`.
+  Future<ShipmentAppCommissionModel?> fetchShipmentAppCommission() async {
+    final snapshot = await _appCommissionFromShipments.limit(1).get();
+    if (snapshot.docs.isEmpty) return null;
+    return ShipmentAppCommissionModel.fromFirestore(snapshot.docs.first);
+  }
+
+  /// Updates the existing settings doc, or creates one if the collection is empty.
+  Future<ShipmentAppCommissionModel> saveShipmentAppCommission({
+    required int inCityValue,
+    required int outCityValue,
+  }) async {
+    final existing = await _appCommissionFromShipments.limit(1).get();
+    final ref = existing.docs.isNotEmpty
+        ? existing.docs.first.reference
+        : _appCommissionFromShipments.doc();
+    final model = ShipmentAppCommissionModel(
+      id: ref.id,
+      inCityValue: inCityValue,
+      outCityValue: outCityValue,
+    );
+    await ref.set(model.toFirestore(), SetOptions(merge: true));
     return model;
   }
 

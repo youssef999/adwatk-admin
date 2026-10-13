@@ -10,6 +10,7 @@ import '../../../core/utils/date_format_utils.dart';
 import '../../../core/utils/maps_launcher.dart';
 import '../../../core/utils/storage_url.dart';
 import '../../../shared/widgets/cards/app_card.dart';
+import '../../../shared/widgets/media/app_image_viewer.dart';
 import '../../../shared/widgets/media/app_network_image.dart';
 import '../controllers/shipping_stores_controller.dart';
 import '../models/shippiment_store_model.dart';
@@ -125,7 +126,12 @@ class _WideIdentityRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Avatar(url: store.profileImageUrl, name: store.name, size: 52),
+        _Avatar(
+          url: store.profileImageUrl,
+          name: store.name,
+          viewerTitle: _profileViewerTitle(store),
+          size: 52,
+        ),
         const SizedBox(width: AppSpacing.md),
         Expanded(
           child: Column(
@@ -231,7 +237,12 @@ class _CompactIdentityRow extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Avatar(url: store.profileImageUrl, name: store.name, size: 52),
+            _Avatar(
+              url: store.profileImageUrl,
+              name: store.name,
+              viewerTitle: _profileViewerTitle(store),
+              size: 52,
+            ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -317,6 +328,7 @@ class _WideVehicleRow extends StatelessWidget {
         _Avatar(
           url: store.vehicleImageUrl,
           name: store.vehicleName.isEmpty ? 'V' : store.vehicleName,
+          viewerTitle: _vehicleViewerTitle(store),
           size: 40,
         ),
         const SizedBox(width: AppSpacing.md),
@@ -370,6 +382,7 @@ class _CompactVehicleRow extends StatelessWidget {
             _Avatar(
               url: store.vehicleImageUrl,
               name: store.vehicleName.isEmpty ? 'V' : store.vehicleName,
+              viewerTitle: _vehicleViewerTitle(store),
               size: 40,
             ),
             const SizedBox(width: AppSpacing.md),
@@ -619,21 +632,25 @@ class _Avatar extends StatelessWidget {
   const _Avatar({
     required this.url,
     required this.name,
+    required this.viewerTitle,
     this.size = 40,
   });
 
   final String url;
   final String name;
+  final String viewerTitle;
   final double size;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
+    final hasImage = StorageUrl.isUsable(url);
+
+    final image = ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: SizedBox(
         width: size,
         height: size,
-        child: !StorageUrl.isUsable(url)
+        child: !hasImage
             ? Container(
                 color: AppColors.info.withValues(alpha: 0.12),
                 alignment: Alignment.center,
@@ -654,6 +671,43 @@ class _Avatar extends StatelessWidget {
                   ),
                 ),
               ),
+      ),
+    );
+
+    if (!hasImage) return image;
+
+    return Tooltip(
+      message: 'تكبير',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.zoomIn,
+        child: GestureDetector(
+          onTap: () => showAppImageViewer(
+            context,
+            url: url,
+            title: viewerTitle,
+          ),
+          child: Stack(
+            children: [
+              image,
+              Positioned(
+                right: 2,
+                bottom: 2,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: AppColors.textPrimary.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: const Icon(
+                    Icons.zoom_in,
+                    size: 12,
+                    color: AppColors.surface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -695,6 +749,14 @@ class _RatingRow extends StatelessWidget {
     );
   }
 }
+
+String _profileViewerTitle(ShippimentStoreModel store) =>
+    store.name.isEmpty ? 'صورة المندوب' : 'صورة المندوب — ${store.name}';
+
+String _vehicleViewerTitle(ShippimentStoreModel store) =>
+    store.vehicleName.isEmpty
+        ? 'صورة المركبة'
+        : 'صورة المركبة — ${store.vehicleName}';
 
 String _formatAmount(num value) {
   final text = value % 1 == 0 ? value.toInt().toString() : value.toString();

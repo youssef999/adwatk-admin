@@ -45,6 +45,12 @@ class ShipmentWalletModel {
   bool get isPending => status.trim().toLowerCase() == 'pending';
   bool get isSent => status.trim().toLowerCase() == 'sent';
 
+  /// Negative rows are the courier's debt; they're settled from the courier
+  /// app (ZainCash), never marked as sent from the panel.
+  bool get isDebt => amount < 0;
+
+  bool get canMarkAsSent => isDone && !isDebt;
+
   /// Lower = higher list priority (action needed / done first).
   int get listPriority {
     if (isDone) return 0;

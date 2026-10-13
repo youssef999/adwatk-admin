@@ -9,6 +9,7 @@ import '../../../core/services/notifications_service.dart';
 import '../../../shared/widgets/feedback/app_snackbar.dart';
 import '../../../shared/widgets/feedback/send_notification_dialog.dart';
 import '../models/delivery_fee_model.dart';
+import '../models/shipment_app_commission_model.dart';
 import '../models/shippiment_store_model.dart';
 import '../repositories/shipping_stores_repository.dart';
 
@@ -16,15 +17,20 @@ class ShippingStoresController extends GetxController {
   ShippingStoresController({
     ShippingStoresRepository? repository,
     NotificationsService? notificationsService,
+    this.canManageAppCommission = true,
   })  : _repository = repository ?? ShippingStoresRepository(),
         _notifications = notificationsService ?? NotificationsService();
 
   final ShippingStoresRepository _repository;
   final NotificationsService _notifications;
 
+  /// False for moderators: the courier commission is an app-profit setting.
+  final bool canManageAppCommission;
+
   static const String listId = 'shipping_stores_list';
   static const String formId = 'shipping_stores_form';
   static const String deliveryFeeId = 'shipping_delivery_fee';
+  static const String appCommissionId = 'shipping_app_commission';
   static const String financeFormId = 'shipping_finance_form';
 
   final nameController = TextEditingController();
@@ -36,12 +42,16 @@ class ShippingStoresController extends GetxController {
   final financeMinAlertController = TextEditingController();
   final inCityFeeController = TextEditingController();
   final outCityFeeController = TextEditingController();
+  final inCityCommissionController = TextEditingController();
+  final outCityCommissionController = TextEditingController();
   final searchController = TextEditingController();
 
   List<ShippimentStoreModel> stores = [];
   Map<String, num> walletBalances = {};
   Map<String, num> minWalletAlerts = {};
   DeliveryFeeModel? deliveryFee;
+  ShipmentAppCommissionModel? appCommission;
+  bool isSavingAppCommission = false;
   String searchQuery = '';
   String vehicleSizeType = 'large';
   bool isLoading = false;
@@ -92,6 +102,8 @@ class ShippingStoresController extends GetxController {
     financeMinAlertController.dispose();
     inCityFeeController.dispose();
     outCityFeeController.dispose();
+    inCityCommissionController.dispose();
+    outCityCommissionController.dispose();
     searchController.dispose();
     super.onClose();
   }
@@ -99,7 +111,7 @@ class ShippingStoresController extends GetxController {
   Future<void> loadStores() async {
     isLoading = true;
     errorMessage = null;
-    update([listId, deliveryFeeId]);
+    update([listId, deliveryFeeId, appCommissionId]);
 
     try {
       final results = await Future.wait([
@@ -107,18 +119,57 @@ class ShippingStoresController extends GetxController {
         _repository.fetchDeliveryFee(),
         _repository.fetchShipmentWalletBalances(),
         _repository.fetchAllShipmentMinWalletAlerts(),
+        _repository.fetchShipmentAppCommission(),
       ]);
       stores = results[0] as List<ShippimentStoreModel>;
       deliveryFee = results[1] as DeliveryFeeModel?;
       walletBalances = results[2] as Map<String, num>;
       minWalletAlerts = results[3] as Map<String, num>;
+      appCommission = results[4] as ShipmentAppCommissionModel?;
       inCityFeeController.text = deliveryFee?.inCity.toString() ?? '';
       outCityFeeController.text = deliveryFee?.outCity.toString() ?? '';
+      inCityCommissionController.text =
+          (appCommission?.inCityValue ?? 0).toString();
+      outCityCommissionController.text =
+          (appCommission?.outCityValue ?? 0).toString();
     } catch (_) {
       errorMessage = 'تعذر تحميل متاجر الشحن. حاول مرة أخرى.';
     } finally {
       isLoading = false;
-      update([listId, deliveryFeeId]);
+      update([listId, deliveryFeeId, appCommissionId]);
+    }
+  }
+
+  Future<void> saveAppCommission() async {
+    final inValue = int.tryParse(inCityCommissionController.text.trim());
+    final outValue = int.tryParse(outCityCommissionController.text.trim());
+
+    if (inValue == null || inValue < 0) {
+      AppSnackbar.error('أدخل عمولة داخل المدينة كرقم صحيح (0 أو أكثر).');
+      return;
+    }
+    if (outValue == null || outValue < 0) {
+      AppSnackbar.error('أدخل عمولة خارج المدينة كرقم صحيح (0 أو أكثر).');
+      return;
+    }
+
+    isSavingAppCommission = true;
+    update([appCommissionId]);
+
+    try {
+      appCommission = await _repository.saveShipmentAppCommission(
+        inCityValue: inValue,
+        outCityValue: outValue,
+      );
+      inCityCommissionController.text = appCommission!.inCityValue.toString();
+      outCityCommissionController.text =
+          appCommission!.outCityValue.toString();
+      AppSnackbar.success('تم حفظ عمولة التطبيق من المندوب.');
+    } catch (_) {
+      AppSnackbar.error('تعذر حفظ عمولة التطبيق.');
+    } finally {
+      isSavingAppCommission = false;
+      update([appCommissionId]);
     }
   }
 

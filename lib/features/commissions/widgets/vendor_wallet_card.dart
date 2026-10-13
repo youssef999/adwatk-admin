@@ -171,6 +171,9 @@ class VendorWalletCard extends StatelessWidget {
   }
 
   static String? _statusHint(VendorWalletModel entry) {
+    if ((entry.isDone || entry.isRequestSent) && entry.isDebt) {
+      return 'مديونية على التاجر — لا يتم إرسالها';
+    }
     if (entry.isDone) {
       return 'محسوب في الإجمالي — يمكن إرسال الأرباح للتاجر';
     }
